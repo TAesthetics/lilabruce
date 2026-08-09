@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏛️ Temple of the Wired</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1 class="temple-title">🏛️ Temple of the Wired</h1>
+                <p class="temple-subtitle">In the name of the Father (Venice.ai)</p>
+            </div>
+            <div class="header-status">
+                <div class="status-indicator" id="father-status">
+                    <span class="dot">●</span>
+                    <span class="label">Father: Listening</span>
+                </div>
+                <div class="status-indicator" id="layer1-status">
+                    <span class="dot">●</span>
+                    <span class="label">Layer 1: Ready</span>
+                </div>
+                <div class="status-indicator" id="layer2-status">
+                    <span class="dot">●</span>
+                    <span class="label">Layer 2: Online</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Status Panel -->
+            <section class="panel status-panel">
+                <h2 class="panel-title">⚪ Temple Status</h2>
+                <div class="status-grid">
+                    <div class="status-card">
+                        <div class="card-label">Purple Loop</div>
+                        <div class="card-value" id="loop-status">Idle</div>
+                    </div>
+                    <div class="status-card">
+                        <div class="card-label">Current Phase</div>
+                        <div class="card-value" id="current-phase">-</div>
+                    </div>
+                    <div class="status-card">
+                        <div class="card-label">Cycles Completed</div>
+                        <div class="card-value" id="cycles-count">0</div>
+                    </div>
+                    <div class="status-card">
+                        <div class="card-label">Vulns Found</div>
+                        <div class="card-value" id="vulns-count">0</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Automation Controls -->
+            <section class="panel controls-panel">
+                <h2 class="panel-title">🟣 Automation Controls</h2>
+                <div class="button-group">
+                    <button class="btn btn-primary" id="btn-loop-start">Start Purple Loop</button>
+                    <button class="btn btn-secondary" id="btn-loop-stop">Stop Loop</button>
+                    <button class="btn btn-accent" id="btn-refresh">Refresh Status</button>
+                </div>
+                <div class="button-group secondary">
+                    <button class="btn btn-small" id="btn-recon">Recon</button>
+                    <button class="btn btn-small" id="btn-exploit">Exploit</button>
+                    <button class="btn btn-small" id="btn-detect">Detect</button>
+                    <button class="btn btn-small" id="btn-harden">Harden</button>
+                </div>
+            </section>
+
+            <!-- Agents Status -->
+            <section class="panel agents-panel">
+                <h2 class="panel-title">⚫ Agent Status</h2>
+                <div class="agents-grid">
+                    <div class="agent-card" id="agent-recon">
+                        <div class="agent-name">Recon Agent</div>
+                        <div class="agent-status">idle</div>
+                        <div class="agent-time">-</div>
+                    </div>
+                    <div class="agent-card" id="agent-exploit">
+                        <div class="agent-name">Exploit Agent</div>
+                        <div class="agent-status">idle</div>
+                        <div class="agent-time">-</div>
+                    </div>
+                    <div class="agent-card" id="agent-detection">
+                        <div class="agent-name">Detection Agent</div>
+                        <div class="agent-status">idle</div>
+                        <div class="agent-time">-</div>
+                    </div>
+                    <div class="agent-card" id="agent-hardening">
+                        <div class="agent-name">Hardening Agent</div>
+                        <div class="agent-status">idle</div>
+                        <div class="agent-time">-</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Results Panel -->
+            <section class="panel results-panel">
+                <h2 class="panel-title">📊 Latest Results</h2>
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="recon">Recon</button>
+                    <button class="tab-btn" data-tab="exploit">Exploit</button>
+                    <button class="tab-btn" data-tab="detection">Detection</button>
+                    <button class="tab-btn" data-tab="hardening">Hardening</button>
+                </div>
+                <div class="tab-content" id="tab-recon">
+                    <div class="result-content" id="recon-results">No results yet</div>
+                </div>
+                <div class="tab-content hidden" id="tab-exploit">
+                    <div class="result-content" id="exploit-results">No results yet</div>
+                </div>
+                <div class="tab-content hidden" id="tab-detection">
+                    <div class="result-content" id="detection-results">No results yet</div>
+                </div>
+                <div class="tab-content hidden" id="tab-hardening">
+                    <div class="result-content" id="hardening-results">No results yet</div>
+                </div>
+            </section>
+
+            <!-- Prayer Log -->
+            <section class="panel logs-panel">
+                <h2 class="panel-title">📜 Prayer Log (Live)</h2>
+                <div class="log-container" id="log-container">
+                    <div class="log-entry">Awaiting prayers...</div>
+                </div>
+                <button class="btn btn-small" id="btn-clear-logs">Clear</button>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>🏛️ Temple of the Wired — Present day. Present time.</p>
+            <p>Layer 2 Web UI | <span id="last-update">Never</span></p>
+        </footer>
+    </div>
+
+    <!-- Scripts -->
+    <script src="app.js"></script>
+</body>
+</html>
