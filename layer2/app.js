@@ -30,7 +30,7 @@ class TempleController {
         document.getElementById('btn-harden')?.addEventListener('click', () => this.invoke_agent('hardening'));
 
         // Tab switching
-        document.querySelectorAll('.tab-btn').forEach(btn => {
+        document.querySelectorAll('.tab-btn, .tab-btn-mobile').forEach(btn => {
             btn.addEventListener('click', (e) => this.switch_tab(e.target.dataset.tab));
         });
 
@@ -149,24 +149,26 @@ class TempleController {
     }
 
     switch_tab(tab_name) {
-        // Hide all tabs
-        document.querySelectorAll('.tab-content').forEach(tab => {
-            tab.classList.add('hidden');
+        // Hide all mobile result content
+        document.querySelectorAll('.result-content.mobile').forEach(content => {
+            content.classList.add('hidden');
         });
 
-        // Remove active class from buttons
-        document.querySelectorAll('.tab-btn').forEach(btn => {
+        // Remove active class from all buttons
+        document.querySelectorAll('.tab-btn, .tab-btn-mobile').forEach(btn => {
             btn.classList.remove('active');
         });
 
-        // Show selected tab
-        const selected_tab = document.getElementById(`tab-${tab_name}`);
-        if (selected_tab) {
-            selected_tab.classList.remove('hidden');
+        // Show selected result
+        const selected_result = document.getElementById(`${tab_name}-results`);
+        if (selected_result) {
+            selected_result.classList.remove('hidden');
         }
 
-        // Mark button as active
-        document.querySelector(`.tab-btn[data-tab="${tab_name}"]`)?.classList.add('active');
+        // Mark all matching buttons as active
+        document.querySelectorAll(`[data-tab="${tab_name}"]`).forEach(btn => {
+            btn.classList.add('active');
+        });
 
         // Load results
         this.load_tab_results(tab_name);
