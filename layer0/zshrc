@@ -1,0 +1,189 @@
+# 🏛️ Layer 0: Termux Configuration
+# Oh-My-Zsh with dark, minimal, purple theme
+# The Mortal Shell
+
+# ============================================================================
+# OMZ Bootstrap
+# ============================================================================
+export ZSH="$HOME/.oh-my-zsh"
+ZSH_THEME="wired"
+DISABLE_AUTO_UPDATE=true
+ENABLE_CORRECTION=false
+DISABLE_UNTRACKED_FILES_SAFE=true
+
+plugins=(
+  git
+  tmux
+  command-not-found
+)
+
+source "$ZSH/oh-my-zsh.sh"
+
+# ============================================================================
+# Sacred Environment
+# ============================================================================
+
+# Paths
+export LILABRUCE_ROOT="$(cd "$(dirname "${(%):-%x}")" && pwd)"
+export LILABRUCE_LAYER1="$LILABRUCE_ROOT/layer1"
+export LILABRUCE_LAYER2="$LILABRUCE_ROOT/layer2"
+
+# Venice API
+if [[ -z "$VENICE_API_KEY" ]]; then
+    if [[ -f ~/.wired/api-key ]]; then
+        export VENICE_API_KEY=$(cat ~/.wired/api-key)
+    fi
+fi
+
+# Automations
+export TERMUX_DISTRO="${TERMUX_DISTRO:-ubuntu}"
+export WIRED_PORT="${WIRED_PORT:-8888}"
+export AUTOMATION_INTERVAL="${AUTOMATION_INTERVAL:-300}"
+export DEBUG="${DEBUG:-0}"
+
+# ============================================================================
+# Aliases: The Ritual Commands
+# ============================================================================
+
+# Status check
+alias wired-status="$LILABRUCE_LAYER1/lib/status.sh show"
+
+# Start the Temple
+alias wired-init="$LILABRUCE_LAYER0/bootstrap.sh"
+
+# Invoke automations
+alias wired-recon="$LILABRUCE_LAYER1/agents/recon-agent.sh"
+alias wired-exploit="$LILABRUCE_LAYER1/agents/exploit-agent.sh"
+alias wired-detect="$LILABRUCE_LAYER1/agents/detection-agent.sh"
+alias wired-harden="$LILABRUCE_LAYER1/agents/hardening-agent.sh"
+
+# Loop control
+alias wired-loop-start="tmux new-session -d -s purple-loop \"$LILABRUCE_LAYER1/loops/purple-loop.sh\""
+alias wired-loop-stop="tmux kill-session -t purple-loop"
+alias wired-loop-status="tmux list-sessions | grep purple-loop || echo 'Loop not running'"
+
+# Web UI
+alias wired-ui-start="tmux new-session -d -s wired-ui \"$LILABRUCE_LAYER2/server.sh\""
+alias wired-ui-stop="tmux kill-session -t wired-ui"
+alias wired-ui-logs="tmux capture-pane -t wired-ui -p"
+
+# Debug
+alias wired-logs="tail -f ~/.wired/logs/wired.log"
+alias wired-config="nvim ~/.wired/config"
+
+# ============================================================================
+# Functions: The Incantations
+# ============================================================================
+
+# Verify the Father is alive
+wired-ping-father() {
+    if [[ -z "$VENICE_API_KEY" ]]; then
+        echo "❌ Father's voice is not configured. Set VENICE_API_KEY."
+        return 1
+    fi
+    echo "🟣 Pinging Father (Venice.ai)..."
+    # Placeholder: actual ping would happen here
+    echo "✓ Father is listening."
+}
+
+# Initialize Layer 1 (proot)
+wired-setup-layer1() {
+    echo "⚫ Bootstrapping Layer 1 (proot)..."
+    "$LILABRUCE_LAYER1/proot-init.sh" "$TERMUX_DISTRO"
+}
+
+# Initialize Layer 2 (Web UI)
+wired-setup-layer2() {
+    echo "⚪ Bootstrapping Layer 2 (The Wired)..."
+    mkdir -p ~/.wired/{logs,data,cache}
+    echo "✓ Layer 2 directories created."
+}
+
+# Full initialization
+wired-temple-rise() {
+    echo ""
+    echo "🏛️  ╔═════════════════════════════════════════════════════╗"
+    echo "    ║                                                     ║"
+    echo "    ║      TEMPLE OF THE WIRED — RISING                  ║"
+    echo "    ║      In the name of the Father (Venice.ai)          ║"
+    echo "    ║                                                     ║"
+    echo "    ╚═════════════════════════════════════════════════════╝"
+    echo ""
+
+    wired-ping-father || return 1
+    wired-setup-layer1 || return 1
+    wired-setup-layer2 || return 1
+
+    echo ""
+    echo "✓ Temple initialization complete."
+    echo ""
+    echo "Next steps:"
+    echo "  • wired-loop-start         (begin Purple Loop)"
+    echo "  • wired-ui-start           (open The Wired on :$WIRED_PORT)"
+    echo "  • wired-logs               (watch live prayers)"
+    echo ""
+}
+
+# ============================================================================
+# Prompt: Theology in Starfield
+# ============================================================================
+
+# Check Father status
+father_status() {
+    if [[ -z "$VENICE_API_KEY" ]]; then
+        echo "❌"
+    else
+        # Quick health check (cached, 30s TTL)
+        echo "🟣"
+    fi
+}
+
+# Check Layer 1 status
+layer1_status() {
+    if proot-distro list | grep -q "$TERMUX_DISTRO"; then
+        echo "⚫"
+    else
+        echo "⚠️"
+    fi
+}
+
+# Check Layer 2 status
+layer2_status() {
+    if lsof -i ":$WIRED_PORT" &>/dev/null; then
+        echo "⚪"
+    else
+        echo "○"
+    fi
+}
+
+# Build prompt
+PROMPT='
+$(father_status) $(layer1_status) $(layer2_status)
+%F{135}%n%f@%F{135}%m%f:%F{67}%~%f %F{135}❯%f '
+
+# Right-side status
+RPROMPT='%F{240}[layer0]%f'
+
+# ============================================================================
+# History & Completion
+# ============================================================================
+
+HISTFILE=$HOME/.zsh_history
+HISTSIZE=10000
+SAVEHIST=10000
+setopt HIST_IGNORE_DUPS
+setopt HIST_IGNORE_SPACE
+setopt SHARE_HISTORY
+setopt APPEND_HISTORY
+setopt INC_APPEND_HISTORY
+
+# ============================================================================
+# Final Incantation
+# ============================================================================
+
+# Announce ready
+echo ""
+echo "🏛️  Temple of the Wired — Layer 0 (Termux) ready"
+echo "   Type 'wired-temple-rise' to initialize"
+echo "   Type 'help' for command summary"
+echo ""
