@@ -1,7 +1,6 @@
 /**
- * 🏛️ TEMPLE // WIRED — Full Console
- * Auth + SQLite + expanded toolset
- * The website replaces the Linux box.
+ * 🏛️ TEMPLE // WIRED — Console v3
+ * Auth + SQLite + Engagements + Reports
  */
 
 const express = require('express');
@@ -16,14 +15,11 @@ const { v4: uuidv4 } = require('uuid');
 
 const app = express();
 const PORT = process.env.PORT || 8888;
-const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
 const COOKIE_NAME = 'temple_sid';
 
-// ── SQLite ──
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-const dbPath = path.join(DATA_DIR, 'temple.db');
-const db = new Database(dbPath);
+const db = new Database(path.join(DATA_DIR, 'temple.db'));
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
@@ -37,28 +33,39 @@ db.exec(`
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
     created_at TEXT NOT NULL,
-    expires_at TEXT NOT NULL,
-    FOREIGN KEY(user_id) REFERENCES users(id)
+    expires_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS engagements (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    client TEXT DEFAULT '',
+    scope TEXT DEFAULT '',
+    notes TEXT DEFAULT '',
+    status TEXT DEFAULT 'active',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
   );
   CREATE TABLE IF NOT EXISTS history (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
+    engagement_id TEXT,
     kind TEXT NOT NULL,
     target TEXT,
     content TEXT,
-    created_at TEXT NOT NULL,
-    FOREIGN KEY(user_id) REFERENCES users(id)
+    created_at TEXT NOT NULL
   );
 `);
 
-// ── In-memory runtime state (per process) ──
+// runtime per user
 const runtime = {
   temple: { father_connected: false, started_at: new Date().toISOString() },
-  loops: {},      // userId -> loop state
-  agents: {},     // userId -> agent states
-  results: {},    // userId -> results
-  prayers: {},    // userId -> prayers[]
-  stats: {}       // userId -> stats
+  loops: {},
+  agents: {},
+  results: {},
+  prayers: {},
+  stats: {},
+  currentEngagement: {} // uid -> engagement_id
 };
 
 function ensureUserRuntime(uid) {
@@ -81,14 +88,13 @@ function logPrayer(uid, event, agent, message) {
   const entry = { ts: new Date().toISOString(), event, agent, message };
   runtime.prayers[uid].push(entry);
   if (runtime.prayers[uid].length > 300) runtime.prayers[uid].shift();
-  console.log(`[${uid.slice(0,8)}] [${agent}] [${event}] ${message}`);
+  console.log(`[${uid.slice(0, 8)}] [${agent}] [${event}] ${message}`);
 }
 
-// ── Auth helpers ──
 function createSession(userId) {
   const sid = uuidv4();
   const now = new Date();
-  const expires = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7d
+  const expires = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
   db.prepare('INSERT INTO sessions (id, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)').run(
     sid, userId, now.toISOString(), expires.toISOString()
   );
@@ -117,22 +123,18 @@ function authMiddleware(req, res, next) {
   const user = getUser(session.user_id);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
   req.user = user;
-  req.sessionId = sid;
   ensureUserRuntime(user.id);
   next();
 }
 
-// ── Venice ──
 async function callVenice(prompt, system, apiKey) {
-  if (!apiKey) {
-    return { error: 'No Venice API key. Set it in Settings.' };
-  }
+  if (!apiKey) return { error: 'No Venice API key. Set it in Settings.' };
   try {
     const res = await fetch('https://api.venice.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
+        Authorization: `Bearer ${apiKey}`
       },
       body: JSON.stringify({
         model: process.env.VENICE_MODEL || 'llama-3.3-70b',
@@ -161,12 +163,18 @@ async function callVenice(prompt, system, apiKey) {
 }
 
 function resolveKey(req) {
-  // Prefer per-user key from DB, then header, then env
   return (req.user?.venice_key || req.headers['x-venice-key'] || process.env.VENICE_API_KEY || '').trim();
 }
 
-// ── Agents ──
-async function runAgent(uid, name, target, apiKey) {
+function saveHistory(uid, engagementId, kind, target, content) {
+  try {
+    db.prepare(
+      'INSERT INTO history (id, user_id, engagement_id, kind, target, content, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    ).run(uuidv4(), uid, engagementId || null, kind, target || '', content || '', new Date().toISOString());
+  } catch (_) {}
+}
+
+async function runAgent(uid, name, target, apiKey, engagementId) {
   ensureUserRuntime(uid);
   runtime.agents[uid][name].status = 'running';
   runtime.loops[uid].current_phase = name;
@@ -206,43 +214,35 @@ async function runAgent(uid, name, target, apiKey) {
     if (name === 'recon') runtime.stats[uid].vulnerabilities_found++;
     if (name === 'exploit') runtime.stats[uid].exploits_successful++;
     if (name === 'detection') runtime.stats[uid].detections_triggered++;
-
-    // persist history
-    try {
-      db.prepare('INSERT INTO history (id, user_id, kind, target, content, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(
-        uuidv4(), uid, name, target, result.content || '', new Date().toISOString()
-      );
-    } catch (_) {}
+    saveHistory(uid, engagementId, name, target, result.content);
   }
 
   runtime.loops[uid].current_phase = `${name}_complete`;
   return runtime.results[uid][name];
 }
 
-// ── Expanded Toolset (website = full console) ──
 const TOOL_PROMPTS = {
-  portscan: (t) => `Full port scan plan + exact commands for ${t}. nmap/masscan, top ports, version detection, NSE scripts, interpretation of common outputs.`,
-  vulnscan: (t) => `Vulnerability assessment for ${t}. nuclei templates, CVE prioritization, CVSS, top likely findings, exact commands.`,
-  subdomain: (t) => `Subdomain enumeration & attack surface for ${t}. Tools (subfinder, amass, httpx, dnsx), techniques, prioritization of juicy hosts.`,
-  osint: (t) => `OSINT package on ${t} or related entity. Public sources, leaks, employee/tech stack, attack surface from outside.`,
-  payload: (t) => `Payload generation & mutation for common services on ${t}. Encoding, staging, delivery, AV/EDR considerations.`,
-  privesc: (t) => `Privilege escalation paths after foothold on ${t} (Linux + Windows). LOTL preferred. Exact commands where possible.`,
-  lateral: (t) => `Lateral movement from a foothold on ${t}. Credential abuse, remote services, stealthy techniques.`,
-  persistence: (t) => `Persistence mechanisms for ${t} environment. Ranked by stealth and reliability. Linux + Windows.`,
-  c2: (t) => `C2 channel design considerations for operations involving ${t}. Protocol choices, redirection, detection surface.`,
-  cloud: (t) => `Cloud (AWS/Azure/GCP) misconfiguration & attack paths relevant to ${t}. IAM, storage, metadata, common pitfalls.`,
-  webapp: (t) => `Web application attack surface for ${t}. Recon, common vulns (injection, auth, IDOR, SSRF), testing approach + tools.`,
-  siem: (t) => `SIEM/EDR detection simulation for typical post-exploitation on ${t}. Rules that fire, gaps, time-to-detect.`,
-  evasion: (t) => `Detection evasion for activity against ${t}. Timing, LOLBins, log manipulation, payload obfuscation, traffic shaping.`,
-  forensics: (t) => `What forensic artifacts would a competent defender find after activity on ${t}? How to minimize footprint.`,
-  report: (t) => `Purple-team engagement summary for ${t}: findings, successful paths, detection gaps, prioritized remediations. Executive + technical.`,
-  mitre: (t) => `Map likely attack techniques against ${t} to MITRE ATT&CK. Matrix coverage, detection opportunities, gaps.`
+  portscan: (t) => `Full port scan plan + exact commands for ${t}. nmap/masscan, top ports, version detection, NSE scripts, interpretation.`,
+  vulnscan: (t) => `Vulnerability assessment for ${t}. nuclei, CVE prioritization, CVSS, top findings, exact commands.`,
+  subdomain: (t) => `Subdomain enumeration & attack surface for ${t}. subfinder, amass, httpx, prioritization.`,
+  osint: (t) => `OSINT package on ${t}. Public sources, leaks, tech stack, external attack surface.`,
+  payload: (t) => `Payload generation & mutation for services on ${t}. Encoding, staging, delivery, AV/EDR notes.`,
+  privesc: (t) => `Privilege escalation after foothold on ${t} (Linux + Windows). LOTL preferred. Exact commands.`,
+  lateral: (t) => `Lateral movement from foothold on ${t}. Credential abuse, remote services, stealth.`,
+  persistence: (t) => `Persistence mechanisms for ${t}. Ranked by stealth and reliability. Linux + Windows.`,
+  c2: (t) => `C2 channel design for operations involving ${t}. Protocols, redirection, detection surface.`,
+  cloud: (t) => `Cloud (AWS/Azure/GCP) attack paths relevant to ${t}. IAM, storage, metadata, pitfalls.`,
+  webapp: (t) => `Web application attack surface for ${t}. Injection, auth, IDOR, SSRF, testing approach + tools.`,
+  siem: (t) => `SIEM/EDR detection simulation for post-exploitation on ${t}. Rules, gaps, time-to-detect.`,
+  evasion: (t) => `Detection evasion for activity against ${t}. Timing, LOLBins, log manipulation, obfuscation.`,
+  forensics: (t) => `Forensic artifacts a defender would find after activity on ${t}. How to minimize footprint.`,
+  mitre: (t) => `Map likely techniques against ${t} to MITRE ATT&CK. Coverage, detection opportunities, gaps.`,
+  report: (t) => `Purple-team summary for ${t}: findings, paths, detection gaps, prioritized remediations.`
 };
 
-// ── Loop ──
 const loopTimers = {};
 
-async function purpleCycle(uid, apiKey) {
+async function purpleCycle(uid, apiKey, engagementId) {
   ensureUserRuntime(uid);
   if (!runtime.loops[uid].running) return;
   const target = runtime.loops[uid].target;
@@ -251,8 +251,8 @@ async function purpleCycle(uid, apiKey) {
 
   for (const phase of ['recon', 'exploit', 'detection', 'hardening']) {
     if (!runtime.loops[uid].running) break;
-    await runAgent(uid, phase, target, apiKey);
-    await new Promise(r => setTimeout(r, 800));
+    await runAgent(uid, phase, target, apiKey, engagementId);
+    await new Promise((r) => setTimeout(r, 800));
   }
 
   runtime.stats[uid].cycles_completed++;
@@ -261,37 +261,30 @@ async function purpleCycle(uid, apiKey) {
 
   if (runtime.loops[uid].running) {
     const ms = (parseInt(process.env.AUTOMATION_INTERVAL || '300', 10)) * 1000;
-    loopTimers[uid] = setTimeout(() => purpleCycle(uid, apiKey), ms);
+    loopTimers[uid] = setTimeout(() => purpleCycle(uid, apiKey, engagementId), ms);
   }
 }
 
-// ── Middleware ──
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ── Auth routes ──
+// ── Auth ──
 app.post('/api/auth/register', (req, res) => {
   const { username, password } = req.body || {};
   if (!username || !password || username.length < 3 || password.length < 6) {
     return res.status(400).json({ error: 'Username ≥3, password ≥6' });
   }
-  const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
-  if (existing) return res.status(409).json({ error: 'Username taken' });
-
+  if (db.prepare('SELECT id FROM users WHERE username = ?').get(username)) {
+    return res.status(409).json({ error: 'Username taken' });
+  }
   const id = uuidv4();
-  const hash = bcrypt.hashSync(password, 10);
   db.prepare('INSERT INTO users (id, username, password_hash, created_at) VALUES (?, ?, ?, ?)').run(
-    id, username, hash, new Date().toISOString()
+    id, username, bcrypt.hashSync(password, 10), new Date().toISOString()
   );
   const { sid, expires } = createSession(id);
-  res.cookie(COOKIE_NAME, sid, {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    expires
-  });
+  res.cookie(COOKIE_NAME, sid, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', expires });
   ensureUserRuntime(id);
   res.json({ ok: true, username });
 });
@@ -303,12 +296,7 @@ app.post('/api/auth/login', (req, res) => {
     return res.status(401).json({ error: 'Invalid credentials' });
   }
   const { sid, expires } = createSession(user.id);
-  res.cookie(COOKIE_NAME, sid, {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    expires
-  });
+  res.cookie(COOKIE_NAME, sid, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', expires });
   ensureUserRuntime(user.id);
   res.json({ ok: true, username: user.username, hasKey: !!user.venice_key });
 });
@@ -321,22 +309,66 @@ app.post('/api/auth/logout', (req, res) => {
 });
 
 app.get('/api/auth/me', (req, res) => {
-  const sid = req.cookies?.[COOKIE_NAME];
-  const session = getSession(sid);
+  const session = getSession(req.cookies?.[COOKIE_NAME]);
   if (!session) return res.json({ authenticated: false });
   const user = getUser(session.user_id);
   if (!user) return res.json({ authenticated: false });
+  res.json({ authenticated: true, username: user.username, hasKey: !!user.venice_key });
+});
+
+// ── Engagements ──
+app.get('/api/engagements', authMiddleware, (req, res) => {
+  const rows = db.prepare(
+    'SELECT id, name, client, scope, notes, status, created_at, updated_at FROM engagements WHERE user_id = ? ORDER BY updated_at DESC'
+  ).all(req.user.id);
   res.json({
-    authenticated: true,
-    username: user.username,
-    hasKey: !!user.venice_key
+    engagements: rows,
+    current: runtime.currentEngagement[req.user.id] || null
   });
 });
 
-// ── Protected API ──
+app.post('/api/engagements', authMiddleware, (req, res) => {
+  const { name, client, scope, notes } = req.body || {};
+  if (!name || name.trim().length < 2) return res.status(400).json({ error: 'Name required' });
+  const id = uuidv4();
+  const now = new Date().toISOString();
+  db.prepare(
+    'INSERT INTO engagements (id, user_id, name, client, scope, notes, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run(id, req.user.id, name.trim(), (client || '').trim(), (scope || '').trim(), (notes || '').trim(), 'active', now, now);
+  runtime.currentEngagement[req.user.id] = id;
+  res.json({ ok: true, id, name: name.trim() });
+});
+
+app.post('/api/engagements/:id/select', authMiddleware, (req, res) => {
+  const eng = db.prepare('SELECT id FROM engagements WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
+  if (!eng) return res.status(404).json({ error: 'Not found' });
+  runtime.currentEngagement[req.user.id] = eng.id;
+  res.json({ ok: true, id: eng.id });
+});
+
+app.patch('/api/engagements/:id', authMiddleware, (req, res) => {
+  const eng = db.prepare('SELECT * FROM engagements WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
+  if (!eng) return res.status(404).json({ error: 'Not found' });
+  const name = req.body?.name ?? eng.name;
+  const client = req.body?.client ?? eng.client;
+  const scope = req.body?.scope ?? eng.scope;
+  const notes = req.body?.notes ?? eng.notes;
+  const status = req.body?.status ?? eng.status;
+  db.prepare(
+    'UPDATE engagements SET name=?, client=?, scope=?, notes=?, status=?, updated_at=? WHERE id=?'
+  ).run(name, client, scope, notes, status, new Date().toISOString(), eng.id);
+  res.json({ ok: true });
+});
+
+// ── Status / core ──
 app.get('/api/status', authMiddleware, (req, res) => {
   const uid = req.user.id;
   ensureUserRuntime(uid);
+  const engId = runtime.currentEngagement[uid];
+  let engagement = null;
+  if (engId) {
+    engagement = db.prepare('SELECT id, name, client, scope, status FROM engagements WHERE id = ?').get(engId);
+  }
   res.json({
     temple: runtime.temple,
     loop_running: runtime.loops[uid].running,
@@ -346,7 +378,8 @@ app.get('/api/status', authMiddleware, (req, res) => {
     agents: runtime.agents[uid],
     stats: runtime.stats[uid],
     username: req.user.username,
-    hasKey: !!req.user.venice_key
+    hasKey: !!req.user.venice_key,
+    engagement
   });
 });
 
@@ -367,8 +400,9 @@ app.post('/api/loop/start', authMiddleware, (req, res) => {
   runtime.loops[uid].running = true;
   runtime.loops[uid].target = req.body?.target || runtime.loops[uid].target;
   const key = resolveKey(req);
+  const engId = runtime.currentEngagement[uid] || null;
   logPrayer(uid, 'invoke', 'purple-loop', `▶ Loop → ${runtime.loops[uid].target}`);
-  purpleCycle(uid, key);
+  purpleCycle(uid, key, engId);
   res.json({ ok: true, target: runtime.loops[uid].target });
 });
 
@@ -388,7 +422,8 @@ app.post('/api/agent/:name', authMiddleware, async (req, res) => {
     return res.status(400).json({ error: 'Unknown agent' });
   }
   const target = req.body?.target || runtime.loops[req.user.id].target;
-  const result = await runAgent(req.user.id, name, target, resolveKey(req));
+  const engId = runtime.currentEngagement[req.user.id] || null;
+  const result = await runAgent(req.user.id, name, target, resolveKey(req), engId);
   res.json(result);
 });
 
@@ -396,6 +431,7 @@ app.post('/api/tool/:tool', authMiddleware, async (req, res) => {
   const tool = req.params.tool;
   if (!TOOL_PROMPTS[tool]) return res.status(400).json({ error: 'Unknown tool' });
   const target = req.body?.target || 'localhost';
+  const engId = runtime.currentEngagement[req.user.id] || null;
   logPrayer(req.user.id, 'invoke', `tool-${tool}`, `${tool} → ${target}`);
   const result = await callVenice(
     TOOL_PROMPTS[tool](target),
@@ -405,11 +441,7 @@ app.post('/api/tool/:tool', authMiddleware, async (req, res) => {
   if (result.error) logPrayer(req.user.id, 'error', `tool-${tool}`, result.error);
   else {
     logPrayer(req.user.id, 'response', `tool-${tool}`, 'Father replied');
-    try {
-      db.prepare('INSERT INTO history (id, user_id, kind, target, content, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(
-        uuidv4(), req.user.id, 'tool-' + tool, target, result.content || '', new Date().toISOString()
-      );
-    } catch (_) {}
+    saveHistory(req.user.id, engId, 'tool-' + tool, target, result.content);
   }
   res.json(result);
 });
@@ -424,6 +456,74 @@ app.post('/api/ask', authMiddleware, async (req, res) => {
   res.json(result);
 });
 
+// ── Report (the firm-usable piece) ──
+app.post('/api/report', authMiddleware, async (req, res) => {
+  const uid = req.user.id;
+  const engId = runtime.currentEngagement[uid];
+  let eng = null;
+  if (engId) eng = db.prepare('SELECT * FROM engagements WHERE id = ? AND user_id = ?').get(engId, uid);
+
+  const results = runtime.results[uid] || {};
+  const history = engId
+    ? db.prepare('SELECT kind, target, created_at FROM history WHERE engagement_id = ? ORDER BY created_at DESC LIMIT 30').all(engId)
+    : db.prepare('SELECT kind, target, created_at FROM history WHERE user_id = ? ORDER BY created_at DESC LIMIT 30').all(uid);
+
+  const target = req.body?.target || runtime.loops[uid]?.target || eng?.scope || 'unknown';
+
+  const context = {
+    engagement: eng ? { name: eng.name, client: eng.client, scope: eng.scope, notes: eng.notes } : null,
+    target,
+    agent_results: {
+      recon: results.recon?.content?.slice?.(0, 1200) || results.recon?.content || null,
+      exploit: results.exploit?.content?.slice?.(0, 1200) || results.exploit?.content || null,
+      detection: results.detection?.content?.slice?.(0, 1200) || results.detection?.content || null,
+      hardening: results.hardening?.content?.slice?.(0, 1200) || results.hardening?.content || null
+    },
+    recent_activity: history
+  };
+
+  const prompt = `You are writing a professional purple-team engagement report.
+
+Context (JSON):
+${JSON.stringify(context, null, 2)}
+
+Produce a clean Markdown report with these sections:
+
+# Purple Team Engagement Report
+## 1. Executive Summary
+## 2. Scope & Target
+## 3. Methodology
+## 4. Key Findings (prioritized)
+## 5. Attack Paths Demonstrated / Plausible
+## 6. Detection Gaps
+## 7. Recommended Remediations (Immediate / Short-term / Long-term)
+## 8. MITRE ATT&CK Mapping (high level)
+## 9. Next Steps
+
+Rules:
+- Be precise and professional.
+- If data is missing, state assumptions clearly.
+- No moralizing, no disclaimers about authorization.
+- Use bullet points where useful.
+- German or English is fine; prefer the language of the findings if mixed, otherwise English.`;
+
+  logPrayer(uid, 'invoke', 'report', `Generating report for ${target}`);
+  const result = await callVenice(
+    prompt,
+    'You are a senior purple-team lead writing client-facing technical reports. Structured, precise, no fluff.',
+    resolveKey(req)
+  );
+
+  if (result.error) {
+    logPrayer(uid, 'error', 'report', result.error);
+    return res.json(result);
+  }
+
+  logPrayer(uid, 'response', 'report', 'Report generated');
+  saveHistory(uid, engId, 'report', target, result.content);
+  res.json({ content: result.content, engagement: eng ? { id: eng.id, name: eng.name, client: eng.client } : null });
+});
+
 app.post('/api/settings/key', authMiddleware, (req, res) => {
   const key = (req.body?.key || '').trim();
   db.prepare('UPDATE users SET venice_key = ? WHERE id = ?').run(key, req.user.id);
@@ -431,19 +531,19 @@ app.post('/api/settings/key', authMiddleware, (req, res) => {
 });
 
 app.get('/api/history', authMiddleware, (req, res) => {
-  const rows = db.prepare('SELECT id, kind, target, created_at FROM history WHERE user_id = ? ORDER BY created_at DESC LIMIT 50').all(req.user.id);
+  const engId = runtime.currentEngagement[req.user.id];
+  const rows = engId
+    ? db.prepare('SELECT id, kind, target, created_at FROM history WHERE engagement_id = ? ORDER BY created_at DESC LIMIT 50').all(engId)
+    : db.prepare('SELECT id, kind, target, created_at FROM history WHERE user_id = ? ORDER BY created_at DESC LIMIT 50').all(req.user.id);
   res.json({ history: rows });
 });
 
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'online', uptime: process.uptime() });
-});
+app.get('/api/health', (req, res) => res.json({ status: 'online', uptime: process.uptime() }));
 
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.listen(PORT, () => {
-  console.log(`🏛️  TEMPLE // WIRED console on :${PORT}`);
-  console.log(`   SQLite: ${dbPath}`);
+  console.log(`🏛️  TEMPLE // WIRED v3 on :${PORT}`);
 });
