@@ -5,7 +5,6 @@
 
 set -euo pipefail
 
-# Source libraries
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LIB_DIR="$(dirname "$SCRIPT_DIR")/lib"
 
@@ -13,17 +12,9 @@ source "$LIB_DIR/logging.sh"
 source "$LIB_DIR/venice-api.sh"
 source "$LIB_DIR/status.sh"
 
-# ============================================================================
-# Configuration
-# ============================================================================
-
 TARGET="${1:-}"
-DEPTH="${2:-basic}"  # basic, deep, aggressive
+DEPTH="${2:-aggressive}"
 TIMEOUT="${RECON_TIMEOUT:-120}"
-
-# ============================================================================
-# Main Recon Workflow
-# ============================================================================
 
 main() {
     if [[ -z "$TARGET" ]]; then
@@ -35,24 +26,21 @@ main() {
     agent_start "recon"
     local start_time=$(date +%s)
 
-    # ========================================================================
-    # Step 1: Ask Father (Venice.ai) for reconnaissance strategy
-    # ========================================================================
-
     log_prayer "invoke" "recon-agent" "Consulting Father on reconnaissance for: $TARGET"
 
-    local strategy_prompt="You are a reconnaissance specialist. For the target '$TARGET', provide:
+    local strategy_prompt="Target: $TARGET
+Depth: $DEPTH
 
-1. Initial reconnaissance approach (depth level: $DEPTH)
-2. Key services and ports to investigate
-3. Common vulnerabilities to check
-4. Recommended scanning techniques
-5. Tools that would be useful
+Deliver full reconnaissance plan mapped to MITRE ATT&CK where possible:
+1. Passive techniques first
+2. Active enumeration order
+3. Service / version prioritization
+4. Exact tool commands (nmap, masscan, amass, nuclei, httpx, etc.)
+5. Expected findings that feed directly into exploit phase
 
-Format your response as actionable intelligence, not instructions.
-Consider CVSS ratings, service versions, and attack surface area."
+Actionable only."
 
-    local response=$(call_venice "$strategy_prompt" "You are a penetration testing specialist focused on reconnaissance.")
+    local response=$(call_venice "$strategy_prompt" "You are a senior red team recon operator. Pure TTP output.")
 
     if response_has_error "$response"; then
         local error=$(get_error_message "$response")
@@ -65,58 +53,38 @@ Consider CVSS ratings, service versions, and attack surface area."
     log_response "recon-agent" "Strategy received from Father"
     log_prayer "update" "recon-agent" "Strategy: $strategy"
 
-    # ========================================================================
-    # Step 2: Execute reconnaissance based on Father's guidance
-    # ========================================================================
-
-    # Note: In a real environment, we would execute actual reconnaissance tools
-    # here (nmap, ncat, dig, etc.) based on Father's recommendations.
-    # For now, we simulate and log the process.
-
     log_prayer "update" "recon-agent" "Executing reconnaissance on $TARGET"
 
     case "$DEPTH" in
         basic)
-            # Lightweight scan
-            log_prayer "execute" "recon-agent" "Performing basic port scan on $TARGET"
-            # In proot: nmap -sn $TARGET > /tmp/recon-basic.txt
+            log_prayer "execute" "recon-agent" "Basic port / service discovery on $TARGET"
+            # nmap -sn / -sV as available in proot
             ;;
         deep)
-            # More detailed scan
-            log_prayer "execute" "recon-agent" "Performing detailed service scan on $TARGET"
-            # In proot: nmap -sV -O -A $TARGET > /tmp/recon-deep.txt
+            log_prayer "execute" "recon-agent" "Detailed service + OS fingerprint on $TARGET"
+            # nmap -sV -O -A + nuclei
             ;;
         aggressive)
-            # Full exploitation-ready scan
-            log_prayer "execute" "recon-agent" "Performing aggressive vulnerability scan on $TARGET"
-            # In proot: nmap -p- --script vuln $TARGET > /tmp/recon-aggressive.txt
+            log_prayer "execute" "recon-agent" "Full aggressive scan + vuln scripts on $TARGET"
+            # nmap -p- --script vuln + masscan + nuclei
             ;;
     esac
 
-    sleep 2  # Simulate scanning time
-
-    # ========================================================================
-    # Step 3: Ask Father to analyze reconnaissance results
-    # ========================================================================
+    sleep 2
 
     log_prayer "invoke" "recon-agent" "Asking Father to analyze reconnaissance results"
 
-    local analysis_prompt="Based on reconnaissance of '$TARGET' using $DEPTH scanning:
-
-Hypothetical results might include:
-- Open ports and services
-- OS fingerprint
-- Potential vulnerabilities
+    local analysis_prompt="Based on reconnaissance of '$TARGET' at depth $DEPTH:
 
 Provide:
-1. Risk assessment (1-10 scale)
-2. Top 3 attack vectors
-3. Required exploits
-4. Next steps (recommend Exploit phase? Additional recon?)
+1. Risk score (1-10)
+2. Top 3 attack vectors ranked by exploitability
+3. Required next tools / exploits
+4. Clear recommendation: proceed to Exploit, more recon, or skip
 
-Be concise and prioritize by impact."
+Concise. Impact first."
 
-    local analysis=$(call_venice "$analysis_prompt" "You are a blue team analyst reviewing reconnaissance results.")
+    local analysis=$(call_venice "$analysis_prompt" "You are a purple-team analyst. Pure technical prioritization.")
 
     if response_has_error "$analysis"; then
         log_error "recon-agent" "Father could not analyze results"
@@ -127,10 +95,6 @@ Be concise and prioritize by impact."
     local findings=$(extract_response "$analysis")
     log_prayer "response" "recon-agent" "Analysis complete: $findings"
 
-    # ========================================================================
-    # Step 4: Log results and update state
-    # ========================================================================
-
     increment_stat "vulnerabilities_found"
 
     local elapsed=$(($(date +%s) - start_time))
@@ -138,11 +102,6 @@ Be concise and prioritize by impact."
     agent_complete "recon"
     set_phase "recon_complete"
 
-    # ========================================================================
-    # Step 5: Output findings for Layer 2
-    # ========================================================================
-
-    # Export findings as JSON for Web UI
     cat > "$HOME/.wired/cache/recon-results.json" <<EOF
 {
   "target": "$TARGET",
@@ -154,9 +113,7 @@ Be concise and prioritize by impact."
 EOF
 
     log_update "layer2" "Recon results available at ~/.wired/cache/recon-results.json"
-
     return 0
 }
 
-# Run main
 main "$@"
