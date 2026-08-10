@@ -3,113 +3,173 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>🏛️ Temple of the Wired</title>
+  <title>TEMPLE // WIRED</title>
   <link rel="stylesheet" href="/styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
-<body class="mobile-view">
-  <div class="container mobile">
-    <header class="header mobile">
-      <div class="header-title-bar">
-        <h1 class="temple-title mobile">🏛️ Temple of the Wired</h1>
-        <div class="status-lights">
-          <span class="dot" id="father-dot" title="Father">🟣</span>
-          <span class="dot" id="loop-dot" title="Loop">⚫</span>
+<body>
+  <div class="scanlines"></div>
+  <div class="vignette"></div>
+
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="logo">TEMPLE<span>//</span>WIRED</div>
+      <div class="status-pills">
+        <span class="pill" id="pill-father" data-state="offline">FATHER</span>
+        <span class="pill" id="pill-loop" data-state="idle">LOOP</span>
+        <span class="pill" id="pill-phase">IDLE</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="clock" id="clock">00:00:00</div>
+      <button class="icon-btn" id="btn-settings" title="Settings">⚙</button>
+    </div>
+  </header>
+
+  <!-- MAIN GRID -->
+  <div class="deck">
+
+    <!-- LEFT COLUMN: TERMINAL -->
+    <section class="panel terminal-panel">
+      <div class="panel-header">
+        <span class="panel-title">◈ NETRUNNER TERMINAL</span>
+        <span class="panel-meta" id="term-meta">ready</span>
+      </div>
+      <div class="terminal-output" id="terminal-output"></div>
+      <div class="terminal-input-row">
+        <span class="prompt">root@temple:~$</span>
+        <input type="text" id="term-input" autocomplete="off" spellcheck="false" placeholder="type command or /help">
+      </div>
+    </section>
+
+    <!-- CENTER: STATUS + AGENTS + TOOLS -->
+    <section class="center-stack">
+
+      <!-- STATUS -->
+      <div class="panel status-panel">
+        <div class="panel-header">
+          <span class="panel-title">◈ SYSTEM STATUS</span>
+        </div>
+        <div class="status-grid">
+          <div class="stat-box">
+            <div class="stat-label">LOOP</div>
+            <div class="stat-value" id="loop-status">IDLE</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">PHASE</div>
+            <div class="stat-value" id="current-phase">—</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">CYCLE</div>
+            <div class="stat-value" id="cycle-count">0</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">VULNS</div>
+            <div class="stat-value" id="vuln-count">0</div>
+          </div>
+        </div>
+        <div class="target-row">
+          <label>TARGET</label>
+          <input type="text" id="target-input" value="localhost" spellcheck="false">
+        </div>
+        <div class="control-row">
+          <button class="btn primary" id="btn-loop-start">▶ START LOOP</button>
+          <button class="btn danger" id="btn-loop-stop">■ STOP</button>
         </div>
       </div>
-    </header>
 
-    <main class="main-content mobile">
-      <section class="panel compact-panel">
-        <div class="status-mini">
-          <div class="stat-row">
-            <span class="label">LOOP</span>
-            <span class="value" id="loop-status">Idle</span>
-          </div>
-          <div class="stat-row">
-            <span class="label">PHASE</span>
-            <span class="value" id="current-phase">-</span>
-          </div>
+      <!-- AGENTS -->
+      <div class="panel agents-panel">
+        <div class="panel-header">
+          <span class="panel-title">◈ AGENTS</span>
         </div>
-      </section>
-
-      <section class="panel">
-        <label class="label" style="display:block;margin-bottom:0.4rem;font-size:0.7rem;color:#999;">TARGET</label>
-        <input type="text" id="target-input" value="localhost" placeholder="target / domain / IP" 
-               style="width:100%;padding:0.75rem;background:#1a1a1a;border:1px solid #333;color:#e0e0e0;font-family:monospace;border-radius:2px;">
-      </section>
-
-      <section class="panel controls-primary">
-        <button class="btn btn-primary big" id="btn-loop-start">▶ START</button>
-        <button class="btn btn-secondary big" id="btn-loop-stop">⏹ STOP</button>
-      </section>
-
-      <section class="panel agents-quick">
-        <button class="quick-agent" id="btn-recon" data-agent="recon">
-          <div class="agent-icon">🔍</div>
-          <div class="agent-label">Recon</div>
-        </button>
-        <button class="quick-agent" id="btn-exploit" data-agent="exploit">
-          <div class="agent-icon">⚔️</div>
-          <div class="agent-label">Exploit</div>
-        </button>
-        <button class="quick-agent" id="btn-detect" data-agent="detection">
-          <div class="agent-icon">🔔</div>
-          <div class="agent-label">Detect</div>
-        </button>
-        <button class="quick-agent" id="btn-harden" data-agent="hardening">
-          <div class="agent-icon">🛡️</div>
-          <div class="agent-label">Harden</div>
-        </button>
-      </section>
-
-      <section class="panel agents-status-mini">
-        <div class="agent-mini" id="agent-recon">
-          <div class="agent-dot">⚫</div>
-          <span class="agent-mini-name">Recon</span>
-          <span class="agent-mini-status">idle</span>
+        <div class="agents-grid">
+          <button class="agent-card" data-agent="recon" id="agent-recon">
+            <div class="agent-icon">🔍</div>
+            <div class="agent-name">RECON</div>
+            <div class="agent-status">idle</div>
+          </button>
+          <button class="agent-card" data-agent="exploit" id="agent-exploit">
+            <div class="agent-icon">⚔️</div>
+            <div class="agent-name">EXPLOIT</div>
+            <div class="agent-status">idle</div>
+          </button>
+          <button class="agent-card" data-agent="detection" id="agent-detection">
+            <div class="agent-icon">📡</div>
+            <div class="agent-name">DETECT</div>
+            <div class="agent-status">idle</div>
+          </button>
+          <button class="agent-card" data-agent="hardening" id="agent-hardening">
+            <div class="agent-icon">🛡️</div>
+            <div class="agent-name">HARDEN</div>
+            <div class="agent-status">idle</div>
+          </button>
         </div>
-        <div class="agent-mini" id="agent-exploit">
-          <div class="agent-dot">⚫</div>
-          <span class="agent-mini-name">Exploit</span>
-          <span class="agent-mini-status">idle</span>
-        </div>
-        <div class="agent-mini" id="agent-detection">
-          <div class="agent-dot">⚫</div>
-          <span class="agent-mini-name">Detect</span>
-          <span class="agent-mini-status">idle</span>
-        </div>
-        <div class="agent-mini" id="agent-hardening">
-          <div class="agent-dot">⚫</div>
-          <span class="agent-mini-name">Harden</span>
-          <span class="agent-mini-status">idle</span>
-        </div>
-      </section>
-
-      <section class="panel logs-panel mobile">
-        <h3 class="panel-title-mini">📜 Prayers</h3>
-        <div class="log-container mobile" id="log-container">
-          <div class="log-entry">Awaiting prayers...</div>
-        </div>
-      </section>
-
-      <section class="panel results-panel mobile">
-        <div class="tabs-mobile">
-          <button class="tab-btn-mobile active" data-tab="recon">📊 Recon</button>
-          <button class="tab-btn-mobile" data-tab="exploit">⚔️ Exploit</button>
-          <button class="tab-btn-mobile" data-tab="detection">🔔 Detect</button>
-          <button class="tab-btn-mobile" data-tab="hardening">🛡️ Harden</button>
-        </div>
-        <div class="result-content mobile" id="recon-results">No results</div>
-        <div class="result-content mobile hidden" id="exploit-results">No results</div>
-        <div class="result-content mobile hidden" id="detection-results">No results</div>
-        <div class="result-content mobile hidden" id="hardening-results">No results</div>
-      </section>
-
-      <div class="action-bar-mobile">
-        <button class="action-btn" id="btn-refresh">🔄 Refresh</button>
-        <button class="action-btn" id="btn-clear-logs">🗑 Clear</button>
       </div>
-    </main>
+
+      <!-- CYBER TOOLS -->
+      <div class="panel tools-panel">
+        <div class="panel-header">
+          <span class="panel-title">◈ CYBER TOOLS</span>
+        </div>
+        <div class="tools-grid">
+          <button class="tool-btn" data-tool="portscan">PORT SCAN</button>
+          <button class="tool-btn" data-tool="vulnscan">VULN SCAN</button>
+          <button class="tool-btn" data-tool="payload">PAYLOAD GEN</button>
+          <button class="tool-btn" data-tool="privesc">PRIV ESC</button>
+          <button class="tool-btn" data-tool="lateral">LATERAL</button>
+          <button class="tool-btn" data-tool="siem">SIEM SIM</button>
+          <button class="tool-btn" data-tool="evasion">EVASION</button>
+          <button class="tool-btn" data-tool="report">REPORT</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT: RESULTS + PRAYERS -->
+    <section class="right-stack">
+      <div class="panel results-panel">
+        <div class="panel-header">
+          <span class="panel-title">◈ RESULTS</span>
+          <div class="tabs">
+            <button class="tab active" data-tab="recon">RECON</button>
+            <button class="tab" data-tab="exploit">EXPLOIT</button>
+            <button class="tab" data-tab="detection">DETECT</button>
+            <button class="tab" data-tab="hardening">HARDEN</button>
+          </div>
+        </div>
+        <div class="result-body" id="result-body">No data yet. Invoke an agent or start the loop.</div>
+      </div>
+
+      <div class="panel prayers-panel">
+        <div class="panel-header">
+          <span class="panel-title">◈ PRAYER LOG</span>
+          <button class="icon-btn small" id="btn-clear-logs">CLR</button>
+        </div>
+        <div class="prayer-log" id="prayer-log"></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- SETTINGS MODAL -->
+  <div class="modal hidden" id="settings-modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span>◈ SETTINGS // FATHER KEY</span>
+        <button class="icon-btn" id="btn-close-settings">✕</button>
+      </div>
+      <div class="modal-body">
+        <label>VENICE.AI API KEY</label>
+        <input type="password" id="venice-key-input" placeholder="sk-... or your key" spellcheck="false">
+        <p class="hint">Key is stored only in this browser (localStorage) and sent with each request. Never committed.</p>
+        <div class="modal-actions">
+          <button class="btn primary" id="btn-save-key">SAVE KEY</button>
+          <button class="btn" id="btn-test-key">TEST CONNECTION</button>
+        </div>
+        <div id="key-status" class="key-status"></div>
+      </div>
+    </div>
   </div>
 
   <script src="/app.js"></script>
