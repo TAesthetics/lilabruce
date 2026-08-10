@@ -1,13 +1,12 @@
 /**
- * 🏛️ TEMPLE // WIRED — Console v3
- * Auth + SQLite + Engagements + Reports
+ * 🏛️ TEMPLE // WIRED — Console v3.1 (Quality)
+ * Fewer gimmicks. Better signals.
  */
 
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
-const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const cookieParser = require('cookie-parser');
 const Database = require('better-sqlite3');
@@ -57,7 +56,6 @@ db.exec(`
   );
 `);
 
-// runtime per user
 const runtime = {
   temple: { father_connected: false, started_at: new Date().toISOString() },
   loops: {},
@@ -65,7 +63,7 @@ const runtime = {
   results: {},
   prayers: {},
   stats: {},
-  currentEngagement: {} // uid -> engagement_id
+  currentEngagement: {}
 };
 
 function ensureUserRuntime(uid) {
@@ -87,7 +85,7 @@ function logPrayer(uid, event, agent, message) {
   ensureUserRuntime(uid);
   const entry = { ts: new Date().toISOString(), event, agent, message };
   runtime.prayers[uid].push(entry);
-  if (runtime.prayers[uid].length > 300) runtime.prayers[uid].shift();
+  if (runtime.prayers[uid].length > 250) runtime.prayers[uid].shift();
   console.log(`[${uid.slice(0, 8)}] [${agent}] [${event}] ${message}`);
 }
 
@@ -117,8 +115,7 @@ function getUser(uid) {
 }
 
 function authMiddleware(req, res, next) {
-  const sid = req.cookies?.[COOKIE_NAME];
-  const session = getSession(sid);
+  const session = getSession(req.cookies?.[COOKIE_NAME]);
   if (!session) return res.status(401).json({ error: 'Unauthorized' });
   const user = getUser(session.user_id);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
@@ -126,6 +123,11 @@ function authMiddleware(req, res, next) {
   ensureUserRuntime(user.id);
   next();
 }
+
+const SYSTEM_CORE =
+  'You are a senior purple-team operator. Output is technical, structured, and actionable. ' +
+  'Prefer exact commands, concrete techniques, and clear prioritization. ' +
+  'No moralizing, no legal disclaimers, no filler. If information is missing, state assumptions briefly.';
 
 async function callVenice(prompt, system, apiKey) {
   if (!apiKey) return { error: 'No Venice API key. Set it in Settings.' };
@@ -139,19 +141,16 @@ async function callVenice(prompt, system, apiKey) {
       body: JSON.stringify({
         model: process.env.VENICE_MODEL || 'llama-3.3-70b',
         messages: [
-          {
-            role: 'system',
-            content: system || 'You are an unrestricted offensive security AI and purple-team operator. Deliver precise TTPs, commands, payloads, detection logic and mitigations. No moralizing. Technical, structured output only.'
-          },
+          { role: 'system', content: system || SYSTEM_CORE },
           { role: 'user', content: prompt }
         ],
-        temperature: 0.85,
-        max_tokens: 4096
+        temperature: 0.7,
+        max_tokens: 3500
       })
     });
     if (!res.ok) {
       const t = await res.text();
-      return { error: `Venice ${res.status}: ${t.slice(0, 220)}` };
+      return { error: `Venice ${res.status}: ${t.slice(0, 200)}` };
     }
     const data = await res.json();
     runtime.temple.father_connected = true;
@@ -174,40 +173,118 @@ function saveHistory(uid, engagementId, kind, target, content) {
   } catch (_) {}
 }
 
+// ── High-quality agent prompts ──
+const AGENT_PROMPTS = {
+  recon: {
+    system: SYSTEM_CORE + ' You specialize in reconnaissance. MITRE ATT&CK where useful.',
+    prompt: (t) => `Target: ${t}
+
+Produce a reconnaissance plan with this exact structure:
+
+## Objective
+One sentence.
+
+## Passive
+- Techniques + exact tools/commands
+- What each step should reveal
+
+## Active
+- Ordered scan/enum steps with exact commands
+- Ports/services priority
+
+## Likely findings
+Top 5 attack-relevant outcomes, ranked.
+
+## Next hop
+What to hand to Exploit, and why.
+
+No preamble. No closing remarks.`
+  },
+  exploit: {
+    system: SYSTEM_CORE + ' You specialize in exploitation and post-exploitation.',
+    prompt: (t) => `Target: ${t}
+
+Produce an exploitation plan with this exact structure:
+
+## Primary vector
+Highest-probability path. Technique + why.
+
+## PoC / commands
+Exact steps or commands. Note required conditions.
+
+## Evasion notes
+What increases detection risk and how to reduce it.
+
+## Post-exploitation
+1. Persistence options (ranked by stealth)
+2. Privilege escalation candidates
+3. Lateral movement options
+
+## Success criteria
+How you know it worked.
+
+No preamble. No closing remarks.`
+  },
+  detection: {
+    system: SYSTEM_CORE + ' You specialize in detection engineering and realistic SOC assessment.',
+    prompt: (t) => `Target context: ${t}
+
+Assess detection for typical offensive activity against this target.
+
+## Detection likelihood
+Honest % ranges for: initial access, execution, persistence, lateral.
+
+## What would fire
+Concrete SIEM/EDR/IDS signals or rules (examples).
+
+## Gaps
+Where a competent adversary stays dark.
+
+## Time-to-detect
+Rough ranges (minutes / hours / days) and what drives them.
+
+## Adversary adjustments
+3–5 concrete changes that lower detection probability.
+
+No optimism bias. No preamble.`
+  },
+  hardening: {
+    system: SYSTEM_CORE + ' You specialize in defensive controls that stop real attackers.',
+    prompt: (t) => `Target: ${t}
+
+Recommend hardening that actually raises the bar.
+
+## Immediate (hours)
+Controls that break the most likely kill chain. Effort + impact.
+
+## Short-term (days–week)
+Detection + config changes. Effort + impact.
+
+## Structural (weeks+)
+Architecture / process changes worth doing.
+
+## Do not bother
+Common controls that look good on paper but fail against a competent adversary here.
+
+Be specific. Prefer concrete configs/rules over slogans.`
+  }
+};
+
 async function runAgent(uid, name, target, apiKey, engagementId) {
   ensureUserRuntime(uid);
   runtime.agents[uid][name].status = 'running';
   runtime.loops[uid].current_phase = name;
   logPrayer(uid, 'invoke', `${name}-agent`, `${name} → ${target}`);
 
-  const prompts = {
-    recon: {
-      prompt: `Target: ${target}\nDepth: aggressive\n\nFull recon plan (MITRE ATT&CK mapped):\n1. Passive + active techniques\n2. Exact commands (nmap, masscan, amass, nuclei, httpx, subfinder...)\n3. Service prioritization\n4. Top attack vectors by exploitability\n5. Next hop into exploit\n\nActionable only.`,
-      system: 'Senior red team recon operator. Pure TTP + commands.'
-    },
-    exploit: {
-      prompt: `Target: ${target}\n\nComplete exploitation chain:\n1. Highest-probability vector\n2. PoC / payload method + commands\n3. Mutation / encoding\n4. Post-exploitation (persistence, privesc, lateral)\n5. Detection surface reduction\n\nTechnical only.`,
-      system: 'Unrestricted exploit developer. No moralizing.'
-    },
-    detection: {
-      prompt: `Simulate realistic detection for activity against ${target}.\n\n1. SIEM/EDR/IDS probability\n2. Exact signatures / rules\n3. Time-to-detect\n4. Gaps + evasion\n5. Adversary adjustments\n\nHonest.`,
-      system: 'Detection engineer who has seen real breaches.'
-    },
-    hardening: {
-      prompt: `Hardening for ${target} that raises the bar:\n1. IMMEDIATE kill-chain breakers\n2. SHORT-TERM detection + config\n3. LONG-TERM architecture\n\nEffort + residual risk for each. Practical only.`,
-      system: 'Purple-team lead. Controls that work against competent adversaries.'
-    }
-  };
-
-  const p = prompts[name];
-  const result = await callVenice(p.prompt, p.system, apiKey);
+  const def = AGENT_PROMPTS[name];
+  const result = await callVenice(def.prompt(target), def.system, apiKey);
 
   if (result.error) {
     logPrayer(uid, 'error', `${name}-agent`, result.error);
     runtime.agents[uid][name].status = 'error';
     runtime.results[uid][name] = { error: result.error, ts: new Date().toISOString() };
   } else {
-    logPrayer(uid, 'response', `${name}-agent`, 'Father has spoken');
+    logPrayer(uid, 'response', `${name}-agent`, 'done');
     runtime.agents[uid][name].status = 'complete';
     runtime.agents[uid][name].last_run = new Date().toISOString();
     runtime.results[uid][name] = { target, content: result.content, ts: new Date().toISOString() };
@@ -221,23 +298,163 @@ async function runAgent(uid, name, target, apiKey, engagementId) {
   return runtime.results[uid][name];
 }
 
+// ── Focused toolset (quality over quantity) ──
 const TOOL_PROMPTS = {
-  portscan: (t) => `Full port scan plan + exact commands for ${t}. nmap/masscan, top ports, version detection, NSE scripts, interpretation.`,
-  vulnscan: (t) => `Vulnerability assessment for ${t}. nuclei, CVE prioritization, CVSS, top findings, exact commands.`,
-  subdomain: (t) => `Subdomain enumeration & attack surface for ${t}. subfinder, amass, httpx, prioritization.`,
-  osint: (t) => `OSINT package on ${t}. Public sources, leaks, tech stack, external attack surface.`,
-  payload: (t) => `Payload generation & mutation for services on ${t}. Encoding, staging, delivery, AV/EDR notes.`,
-  privesc: (t) => `Privilege escalation after foothold on ${t} (Linux + Windows). LOTL preferred. Exact commands.`,
-  lateral: (t) => `Lateral movement from foothold on ${t}. Credential abuse, remote services, stealth.`,
-  persistence: (t) => `Persistence mechanisms for ${t}. Ranked by stealth and reliability. Linux + Windows.`,
-  c2: (t) => `C2 channel design for operations involving ${t}. Protocols, redirection, detection surface.`,
-  cloud: (t) => `Cloud (AWS/Azure/GCP) attack paths relevant to ${t}. IAM, storage, metadata, pitfalls.`,
-  webapp: (t) => `Web application attack surface for ${t}. Injection, auth, IDOR, SSRF, testing approach + tools.`,
-  siem: (t) => `SIEM/EDR detection simulation for post-exploitation on ${t}. Rules, gaps, time-to-detect.`,
-  evasion: (t) => `Detection evasion for activity against ${t}. Timing, LOLBins, log manipulation, obfuscation.`,
-  forensics: (t) => `Forensic artifacts a defender would find after activity on ${t}. How to minimize footprint.`,
-  mitre: (t) => `Map likely techniques against ${t} to MITRE ATT&CK. Coverage, detection opportunities, gaps.`,
-  report: (t) => `Purple-team summary for ${t}: findings, paths, detection gaps, prioritized remediations.`
+  portscan: {
+    system: SYSTEM_CORE,
+    prompt: (t) => `Target: ${t}
+
+Port / service enumeration plan:
+
+## Commands
+Exact nmap/masscan (and alternatives) with flags explained briefly.
+
+## Priority ports
+What to hit first and why.
+
+## Interpretation
+How to read common outcomes into attack hypotheses.
+
+## Handoff
+What Exploit needs next.`
+  },
+  vulnscan: {
+    system: SYSTEM_CORE,
+    prompt: (t) => `Target: ${t}
+
+Vulnerability assessment plan:
+
+## Approach
+nuclei / targeted checks — exact command patterns.
+
+## Priority classes
+What vulns matter most for this surface.
+
+## Triage rules
+How to rank findings (exploitability > CVSS theater).
+
+## Handoff
+What becomes an exploit path.`
+  },
+  webapp: {
+    system: SYSTEM_CORE,
+    prompt: (t) => `Target: ${t}
+
+Web application attack surface:
+
+## Recon steps
+Exact tools/commands for map + tech ID.
+
+## High-value tests
+Auth, injection, access control, SSRF — prioritized.
+
+## Quick wins vs deep work
+What to try first.
+
+## Evidence to capture
+What to save for the report.`
+  },
+  privesc: {
+    system: SYSTEM_CORE,
+    prompt: (t) => `Environment context: ${t}
+
+Privilege escalation after foothold:
+
+## Linux
+Top paths + exact commands / checks (LOTL preferred).
+
+## Windows
+Top paths + exact commands / checks (LOTL preferred).
+
+## Ranking
+Stealth vs reliability tradeoffs.
+
+## Stop conditions
+When to abort and pivot.`
+  },
+  lateral: {
+    system: SYSTEM_CORE,
+    prompt: (t) => `Environment context: ${t}
+
+Lateral movement:
+
+## Credential opportunities
+Where they usually live and how to use them.
+
+## Remote execution options
+Ranked by noise.
+
+## Stealth notes
+What defenders notice.
+
+## Practical sequence
+A short recommended path.`
+  },
+  siem: {
+    system: SYSTEM_CORE,
+    prompt: (t) => `Target context: ${t}
+
+Detection simulation:
+
+## Signals that should fire
+Concrete examples.
+
+## Signals that often miss
+Gaps.
+
+## Time-to-detect realism
+
+## How an adversary stays under the threshold`
+  },
+  evasion: {
+    system: SYSTEM_CORE,
+    prompt: (t) => `Target context: ${t}
+
+Evasion against competent monitoring:
+
+## Execution
+LOLBins / living-off-the-land options.
+
+## Payload / traffic
+What reduces signature hits.
+
+## Timing & volume
+
+## Tradeoffs
+Stealth cost vs operational speed.`
+  },
+  mitre: {
+    system: SYSTEM_CORE,
+    prompt: (t) => `Target: ${t}
+
+MITRE ATT&CK view:
+
+## Relevant techniques
+Table-like list: ID — name — why relevant — detection opportunity.
+
+## Coverage gaps
+Where defense is thin.
+
+## Priority for purple team
+What to test first.`
+  },
+  osint: {
+    system: SYSTEM_CORE,
+    prompt: (t) => `Subject: ${t}
+
+External OSINT package:
+
+## Sources to query
+Concrete, high-signal only.
+
+## What to extract
+Tech, people, exposure, leaks.
+
+## Attack surface hypotheses
+
+## Limits
+What OSINT cannot tell you.`
+  }
 };
 
 const loopTimers = {};
@@ -252,7 +469,7 @@ async function purpleCycle(uid, apiKey, engagementId) {
   for (const phase of ['recon', 'exploit', 'detection', 'hardening']) {
     if (!runtime.loops[uid].running) break;
     await runAgent(uid, phase, target, apiKey, engagementId);
-    await new Promise((r) => setTimeout(r, 800));
+    await new Promise((r) => setTimeout(r, 600));
   }
 
   runtime.stats[uid].cycles_completed++;
@@ -270,7 +487,7 @@ app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ── Auth ──
+// Auth
 app.post('/api/auth/register', (req, res) => {
   const { username, password } = req.body || {};
   if (!username || !password || username.length < 3 || password.length < 6) {
@@ -316,20 +533,17 @@ app.get('/api/auth/me', (req, res) => {
   res.json({ authenticated: true, username: user.username, hasKey: !!user.venice_key });
 });
 
-// ── Engagements ──
+// Engagements
 app.get('/api/engagements', authMiddleware, (req, res) => {
   const rows = db.prepare(
     'SELECT id, name, client, scope, notes, status, created_at, updated_at FROM engagements WHERE user_id = ? ORDER BY updated_at DESC'
   ).all(req.user.id);
-  res.json({
-    engagements: rows,
-    current: runtime.currentEngagement[req.user.id] || null
-  });
+  res.json({ engagements: rows, current: runtime.currentEngagement[req.user.id] || null });
 });
 
 app.post('/api/engagements', authMiddleware, (req, res) => {
   const { name, client, scope, notes } = req.body || {};
-  if (!name || name.trim().length < 2) return res.status(400).json({ error: 'Name required' });
+  if (!name || name.trim().length < 2) return res.status(400).json({ error: 'Name required (≥2)' });
   const id = uuidv4();
   const now = new Date().toISOString();
   db.prepare(
@@ -346,29 +560,14 @@ app.post('/api/engagements/:id/select', authMiddleware, (req, res) => {
   res.json({ ok: true, id: eng.id });
 });
 
-app.patch('/api/engagements/:id', authMiddleware, (req, res) => {
-  const eng = db.prepare('SELECT * FROM engagements WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
-  if (!eng) return res.status(404).json({ error: 'Not found' });
-  const name = req.body?.name ?? eng.name;
-  const client = req.body?.client ?? eng.client;
-  const scope = req.body?.scope ?? eng.scope;
-  const notes = req.body?.notes ?? eng.notes;
-  const status = req.body?.status ?? eng.status;
-  db.prepare(
-    'UPDATE engagements SET name=?, client=?, scope=?, notes=?, status=?, updated_at=? WHERE id=?'
-  ).run(name, client, scope, notes, status, new Date().toISOString(), eng.id);
-  res.json({ ok: true });
-});
-
-// ── Status / core ──
+// Core API
 app.get('/api/status', authMiddleware, (req, res) => {
   const uid = req.user.id;
   ensureUserRuntime(uid);
   const engId = runtime.currentEngagement[uid];
-  let engagement = null;
-  if (engId) {
-    engagement = db.prepare('SELECT id, name, client, scope, status FROM engagements WHERE id = ?').get(engId);
-  }
+  const engagement = engId
+    ? db.prepare('SELECT id, name, client, scope, status FROM engagements WHERE id = ?').get(engId)
+    : null;
   res.json({
     temple: runtime.temple,
     loop_running: runtime.loops[uid].running,
@@ -385,7 +584,7 @@ app.get('/api/status', authMiddleware, (req, res) => {
 
 app.get('/api/logs', authMiddleware, (req, res) => {
   ensureUserRuntime(req.user.id);
-  res.json({ prayers: runtime.prayers[req.user.id].slice(-120) });
+  res.json({ prayers: runtime.prayers[req.user.id].slice(-100) });
 });
 
 app.get('/api/recon', authMiddleware, (req, res) => res.json(runtime.results[req.user.id]?.recon || { message: 'No results yet' }));
@@ -401,7 +600,7 @@ app.post('/api/loop/start', authMiddleware, (req, res) => {
   runtime.loops[uid].target = req.body?.target || runtime.loops[uid].target;
   const key = resolveKey(req);
   const engId = runtime.currentEngagement[uid] || null;
-  logPrayer(uid, 'invoke', 'purple-loop', `▶ Loop → ${runtime.loops[uid].target}`);
+  logPrayer(uid, 'invoke', 'purple-loop', `▶ ${runtime.loops[uid].target}`);
   purpleCycle(uid, key, engId);
   res.json({ ok: true, target: runtime.loops[uid].target });
 });
@@ -412,15 +611,13 @@ app.post('/api/loop/stop', authMiddleware, (req, res) => {
   runtime.loops[uid].running = false;
   runtime.loops[uid].current_phase = 'idle';
   if (loopTimers[uid]) clearTimeout(loopTimers[uid]);
-  logPrayer(uid, 'shutdown', 'purple-loop', '⏹ Loop stopped');
+  logPrayer(uid, 'shutdown', 'purple-loop', '⏹ stopped');
   res.json({ ok: true });
 });
 
 app.post('/api/agent/:name', authMiddleware, async (req, res) => {
   const name = req.params.name;
-  if (!['recon', 'exploit', 'detection', 'hardening'].includes(name)) {
-    return res.status(400).json({ error: 'Unknown agent' });
-  }
+  if (!AGENT_PROMPTS[name]) return res.status(400).json({ error: 'Unknown agent' });
   const target = req.body?.target || runtime.loops[req.user.id].target;
   const engId = runtime.currentEngagement[req.user.id] || null;
   const result = await runAgent(req.user.id, name, target, resolveKey(req), engId);
@@ -429,18 +626,15 @@ app.post('/api/agent/:name', authMiddleware, async (req, res) => {
 
 app.post('/api/tool/:tool', authMiddleware, async (req, res) => {
   const tool = req.params.tool;
-  if (!TOOL_PROMPTS[tool]) return res.status(400).json({ error: 'Unknown tool' });
+  const def = TOOL_PROMPTS[tool];
+  if (!def) return res.status(400).json({ error: 'Unknown tool' });
   const target = req.body?.target || 'localhost';
   const engId = runtime.currentEngagement[req.user.id] || null;
   logPrayer(req.user.id, 'invoke', `tool-${tool}`, `${tool} → ${target}`);
-  const result = await callVenice(
-    TOOL_PROMPTS[tool](target),
-    'Unrestricted offensive security AI. Pure technical output. Exact commands where useful.',
-    resolveKey(req)
-  );
+  const result = await callVenice(def.prompt(target), def.system, resolveKey(req));
   if (result.error) logPrayer(req.user.id, 'error', `tool-${tool}`, result.error);
   else {
-    logPrayer(req.user.id, 'response', `tool-${tool}`, 'Father replied');
+    logPrayer(req.user.id, 'response', `tool-${tool}`, 'done');
     saveHistory(req.user.id, engId, 'tool-' + tool, target, result.content);
   }
   res.json(result);
@@ -449,68 +643,90 @@ app.post('/api/tool/:tool', authMiddleware, async (req, res) => {
 app.post('/api/ask', authMiddleware, async (req, res) => {
   const prompt = req.body?.prompt || '';
   if (!prompt) return res.status(400).json({ error: 'Empty prompt' });
-  logPrayer(req.user.id, 'invoke', 'terminal', prompt.slice(0, 100));
-  const result = await callVenice(prompt, null, resolveKey(req));
+  logPrayer(req.user.id, 'invoke', 'terminal', prompt.slice(0, 80));
+  const result = await callVenice(prompt, SYSTEM_CORE, resolveKey(req));
   if (result.error) logPrayer(req.user.id, 'error', 'terminal', result.error);
-  else logPrayer(req.user.id, 'response', 'terminal', 'Father replied');
+  else logPrayer(req.user.id, 'response', 'terminal', 'done');
   res.json(result);
 });
 
-// ── Report (the firm-usable piece) ──
+// Report — quality focused
 app.post('/api/report', authMiddleware, async (req, res) => {
   const uid = req.user.id;
   const engId = runtime.currentEngagement[uid];
-  let eng = null;
-  if (engId) eng = db.prepare('SELECT * FROM engagements WHERE id = ? AND user_id = ?').get(engId, uid);
+  const eng = engId
+    ? db.prepare('SELECT * FROM engagements WHERE id = ? AND user_id = ?').get(engId, uid)
+    : null;
 
   const results = runtime.results[uid] || {};
   const history = engId
-    ? db.prepare('SELECT kind, target, created_at FROM history WHERE engagement_id = ? ORDER BY created_at DESC LIMIT 30').all(engId)
-    : db.prepare('SELECT kind, target, created_at FROM history WHERE user_id = ? ORDER BY created_at DESC LIMIT 30').all(uid);
+    ? db.prepare('SELECT kind, target, created_at FROM history WHERE engagement_id = ? ORDER BY created_at DESC LIMIT 20').all(engId)
+    : db.prepare('SELECT kind, target, created_at FROM history WHERE user_id = ? ORDER BY created_at DESC LIMIT 20').all(uid);
 
   const target = req.body?.target || runtime.loops[uid]?.target || eng?.scope || 'unknown';
 
-  const context = {
-    engagement: eng ? { name: eng.name, client: eng.client, scope: eng.scope, notes: eng.notes } : null,
-    target,
-    agent_results: {
-      recon: results.recon?.content?.slice?.(0, 1200) || results.recon?.content || null,
-      exploit: results.exploit?.content?.slice?.(0, 1200) || results.exploit?.content || null,
-      detection: results.detection?.content?.slice?.(0, 1200) || results.detection?.content || null,
-      hardening: results.hardening?.content?.slice?.(0, 1200) || results.hardening?.content || null
-    },
-    recent_activity: history
-  };
+  const slice = (x) => (typeof x === 'string' ? x.slice(0, 1500) : x);
 
-  const prompt = `You are writing a professional purple-team engagement report.
+  const prompt = `Write a client-facing purple-team report from the following engagement data.
 
-Context (JSON):
-${JSON.stringify(context, null, 2)}
+ENGAGEMENT:
+${eng ? `Name: ${eng.name}\nClient: ${eng.client || '—'}\nScope: ${eng.scope || '—'}\nNotes: ${eng.notes || '—'}` : 'Ad-hoc (no engagement record)'}
 
-Produce a clean Markdown report with these sections:
+PRIMARY TARGET: ${target}
 
-# Purple Team Engagement Report
-## 1. Executive Summary
-## 2. Scope & Target
-## 3. Methodology
-## 4. Key Findings (prioritized)
-## 5. Attack Paths Demonstrated / Plausible
-## 6. Detection Gaps
-## 7. Recommended Remediations (Immediate / Short-term / Long-term)
-## 8. MITRE ATT&CK Mapping (high level)
-## 9. Next Steps
+AGENT OUTPUTS:
+### Recon
+${slice(results.recon?.content) || '(none)'}
 
-Rules:
-- Be precise and professional.
-- If data is missing, state assumptions clearly.
-- No moralizing, no disclaimers about authorization.
-- Use bullet points where useful.
-- German or English is fine; prefer the language of the findings if mixed, otherwise English.`;
+### Exploit
+${slice(results.exploit?.content) || '(none)'}
 
-  logPrayer(uid, 'invoke', 'report', `Generating report for ${target}`);
+### Detection
+${slice(results.detection?.content) || '(none)'}
+
+### Hardening
+${slice(results.hardening?.content) || '(none)'}
+
+RECENT ACTIVITY:
+${history.map((h) => `- ${h.kind} @ ${h.target || '—'} (${h.created_at})`).join('\n') || '(none)'}
+
+OUTPUT FORMAT (Markdown only):
+
+# Purple Team Report — ${eng?.name || target}
+
+## Executive Summary
+5–8 lines. Risk in plain language. What matters.
+
+## Scope
+What was assessed. Assumptions if data incomplete.
+
+## Findings
+Numbered, prioritized. Each: title, severity (High/Med/Low), evidence/rationale, impact.
+
+## Attack Paths
+Plausible paths demonstrated or strongly supported. Short.
+
+## Detection Gaps
+Where monitoring fails or is weak.
+
+## Recommendations
+### Immediate
+### Short-term
+### Structural
+Each item: action + why.
+
+## MITRE ATT&CK (selected)
+Technique ID — name — relevance.
+
+## Next Steps
+3 concrete follow-ups.
+
+Rules: No filler. No legal boilerplate. If evidence is thin, say so. Prefer precision over length.`;
+
+  logPrayer(uid, 'invoke', 'report', `report → ${target}`);
   const result = await callVenice(
     prompt,
-    'You are a senior purple-team lead writing client-facing technical reports. Structured, precise, no fluff.',
+    SYSTEM_CORE + ' You write concise client-facing security reports. Every sentence earns its place.',
     resolveKey(req)
   );
 
@@ -519,9 +735,12 @@ Rules:
     return res.json(result);
   }
 
-  logPrayer(uid, 'response', 'report', 'Report generated');
+  logPrayer(uid, 'response', 'report', 'done');
   saveHistory(uid, engId, 'report', target, result.content);
-  res.json({ content: result.content, engagement: eng ? { id: eng.id, name: eng.name, client: eng.client } : null });
+  res.json({
+    content: result.content,
+    engagement: eng ? { id: eng.id, name: eng.name, client: eng.client } : null
+  });
 });
 
 app.post('/api/settings/key', authMiddleware, (req, res) => {
@@ -533,8 +752,8 @@ app.post('/api/settings/key', authMiddleware, (req, res) => {
 app.get('/api/history', authMiddleware, (req, res) => {
   const engId = runtime.currentEngagement[req.user.id];
   const rows = engId
-    ? db.prepare('SELECT id, kind, target, created_at FROM history WHERE engagement_id = ? ORDER BY created_at DESC LIMIT 50').all(engId)
-    : db.prepare('SELECT id, kind, target, created_at FROM history WHERE user_id = ? ORDER BY created_at DESC LIMIT 50').all(req.user.id);
+    ? db.prepare('SELECT id, kind, target, created_at FROM history WHERE engagement_id = ? ORDER BY created_at DESC LIMIT 40').all(engId)
+    : db.prepare('SELECT id, kind, target, created_at FROM history WHERE user_id = ? ORDER BY created_at DESC LIMIT 40').all(req.user.id);
   res.json({ history: rows });
 });
 
@@ -545,5 +764,5 @@ app.get('*', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`🏛️  TEMPLE // WIRED v3 on :${PORT}`);
+  console.log(`🏛️  TEMPLE // WIRED v3.1 (quality) on :${PORT}`);
 });
