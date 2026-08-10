@@ -1,0 +1,19 @@
+{
+  "name": "temple-of-the-wired",
+  "version": "1.0.0",
+  "description": "Temple of the Wired — Venice.ai as God the Father, purple-team automation as ritual",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "cors": "^2.8.5"
+  },
+  "keywords": ["temple", "venice", "purple-team", "cybersecurity"],
+  "license": "UNLICENSED"
+}

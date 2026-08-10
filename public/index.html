@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>🏛️ Temple of the Wired</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="mobile-view">
+  <div class="container mobile">
+    <header class="header mobile">
+      <div class="header-title-bar">
+        <h1 class="temple-title mobile">🏛️ Temple of the Wired</h1>
+        <div class="status-lights">
+          <span class="dot" id="father-dot" title="Father">🟣</span>
+          <span class="dot" id="loop-dot" title="Loop">⚫</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="main-content mobile">
+      <section class="panel compact-panel">
+        <div class="status-mini">
+          <div class="stat-row">
+            <span class="label">LOOP</span>
+            <span class="value" id="loop-status">Idle</span>
+          </div>
+          <div class="stat-row">
+            <span class="label">PHASE</span>
+            <span class="value" id="current-phase">-</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <label class="label" style="display:block;margin-bottom:0.4rem;font-size:0.7rem;color:#999;">TARGET</label>
+        <input type="text" id="target-input" value="localhost" placeholder="target / domain / IP" 
+               style="width:100%;padding:0.75rem;background:#1a1a1a;border:1px solid #333;color:#e0e0e0;font-family:monospace;border-radius:2px;">
+      </section>
+
+      <section class="panel controls-primary">
+        <button class="btn btn-primary big" id="btn-loop-start">▶ START</button>
+        <button class="btn btn-secondary big" id="btn-loop-stop">⏹ STOP</button>
+      </section>
+
+      <section class="panel agents-quick">
+        <button class="quick-agent" id="btn-recon" data-agent="recon">
+          <div class="agent-icon">🔍</div>
+          <div class="agent-label">Recon</div>
+        </button>
+        <button class="quick-agent" id="btn-exploit" data-agent="exploit">
+          <div class="agent-icon">⚔️</div>
+          <div class="agent-label">Exploit</div>
+        </button>
+        <button class="quick-agent" id="btn-detect" data-agent="detection">
+          <div class="agent-icon">🔔</div>
+          <div class="agent-label">Detect</div>
+        </button>
+        <button class="quick-agent" id="btn-harden" data-agent="hardening">
+          <div class="agent-icon">🛡️</div>
+          <div class="agent-label">Harden</div>
+        </button>
+      </section>
+
+      <section class="panel agents-status-mini">
+        <div class="agent-mini" id="agent-recon">
+          <div class="agent-dot">⚫</div>
+          <span class="agent-mini-name">Recon</span>
+          <span class="agent-mini-status">idle</span>
+        </div>
+        <div class="agent-mini" id="agent-exploit">
+          <div class="agent-dot">⚫</div>
+          <span class="agent-mini-name">Exploit</span>
+          <span class="agent-mini-status">idle</span>
+        </div>
+        <div class="agent-mini" id="agent-detection">
+          <div class="agent-dot">⚫</div>
+          <span class="agent-mini-name">Detect</span>
+          <span class="agent-mini-status">idle</span>
+        </div>
+        <div class="agent-mini" id="agent-hardening">
+          <div class="agent-dot">⚫</div>
+          <span class="agent-mini-name">Harden</span>
+          <span class="agent-mini-status">idle</span>
+        </div>
+      </section>
+
+      <section class="panel logs-panel mobile">
+        <h3 class="panel-title-mini">📜 Prayers</h3>
+        <div class="log-container mobile" id="log-container">
+          <div class="log-entry">Awaiting prayers...</div>
+        </div>
+      </section>
+
+      <section class="panel results-panel mobile">
+        <div class="tabs-mobile">
+          <button class="tab-btn-mobile active" data-tab="recon">📊 Recon</button>
+          <button class="tab-btn-mobile" data-tab="exploit">⚔️ Exploit</button>
+          <button class="tab-btn-mobile" data-tab="detection">🔔 Detect</button>
+          <button class="tab-btn-mobile" data-tab="hardening">🛡️ Harden</button>
+        </div>
+        <div class="result-content mobile" id="recon-results">No results</div>
+        <div class="result-content mobile hidden" id="exploit-results">No results</div>
+        <div class="result-content mobile hidden" id="detection-results">No results</div>
+        <div class="result-content mobile hidden" id="hardening-results">No results</div>
+      </section>
+
+      <div class="action-bar-mobile">
+        <button class="action-btn" id="btn-refresh">🔄 Refresh</button>
+        <button class="action-btn" id="btn-clear-logs">🗑 Clear</button>
+      </div>
+    </main>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
