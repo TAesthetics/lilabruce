@@ -1,4 +1,4 @@
-/* TEMPLE // WIRED — Console with Auth */
+/* TEMPLE // WIRED — Console with Auth + Engagements */
 
 :root {
   --bg: #050508;
@@ -157,6 +157,22 @@ html, body {
 }
 .panel-meta { font-size: 10px; color: var(--text-dim); }
 
+/* ENGAGEMENT */
+.eng-row {
+  display: flex; gap: 8px; padding: 10px 12px 6px; align-items: center;
+}
+.eng-select {
+  flex: 1; background: #08080f; border: 1px solid var(--panel-border); color: var(--text);
+  padding: 8px 10px; font-family: var(--font-mono); font-size: 12px; outline: none; border-radius: 2px;
+}
+.eng-select:focus { border-color: var(--neon); }
+.btn.small {
+  padding: 8px 12px; font-size: 10px; white-space: nowrap;
+}
+.eng-meta {
+  padding: 0 12px 10px; font-size: 11px; color: var(--text-dim); line-height: 1.35;
+}
+
 /* TERMINAL */
 .terminal-output {
   flex: 1; overflow-y: auto; padding: 12px; font-size: 12px; line-height: 1.45;
@@ -225,10 +241,10 @@ html, body {
 .agent-name { font-family: var(--font-display); font-size: 11px; letter-spacing: 0.12em; }
 .agent-status { font-size: 10px; color: var(--text-dim); text-transform: uppercase; }
 
-/* TOOLS — denser */
+/* TOOLS */
 .tools-grid {
   display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; padding: 10px 12px 12px;
-  max-height: 220px; overflow-y: auto;
+  max-height: 200px; overflow-y: auto;
 }
 .tool-btn {
   background: #08080f; border: 1px solid var(--panel-border); color: var(--text-dim);
