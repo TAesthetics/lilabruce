@@ -1,7 +1,7 @@
 {
   "name": "temple-of-the-wired",
-  "version": "1.0.0",
-  "description": "Temple of the Wired — Venice.ai as God the Father, purple-team automation as ritual",
+  "version": "2.1.0",
+  "description": "Temple of the Wired — Netrunner deck with auth",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -12,8 +12,11 @@
   },
   "dependencies": {
     "express": "^4.21.0",
-    "cors": "^2.8.5"
+    "cors": "^2.8.5",
+    "better-sqlite3": "^11.5.0",
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
+    "uuid": "^10.0.0"
   },
-  "keywords": ["temple", "venice", "purple-team", "cybersecurity"],
   "license": "UNLICENSED"
 }
