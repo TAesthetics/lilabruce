@@ -11,7 +11,6 @@
   <div class="scanlines"></div>
   <div class="vignette"></div>
 
-  <!-- LOGIN SCREEN -->
   <div id="login-screen" class="login-screen">
     <div class="login-box">
       <div class="login-logo">TEMPLE<span>//</span>WIRED</div>
@@ -21,13 +20,12 @@
         <button class="login-tab" data-mode="register">REGISTER</button>
       </div>
       <input type="text" id="auth-user" placeholder="username" spellcheck="false" autocomplete="username">
-      <input type="password" id="auth-pass" placeholder="password" autocomplete="current-password">
+      <input type="password" id="auth-pass" placeholder="password (≥6)" autocomplete="current-password">
       <button class="btn primary full" id="btn-auth">ENTER</button>
       <div id="auth-msg" class="auth-msg"></div>
     </div>
   </div>
 
-  <!-- DECK (hidden until auth) -->
   <div id="deck-root" class="hidden">
     <header class="topbar">
       <div class="topbar-left">
@@ -49,7 +47,7 @@
     <div class="deck">
       <section class="panel terminal-panel">
         <div class="panel-header">
-          <span class="panel-title">◈ NETRUNNER TERMINAL</span>
+          <span class="panel-title">◈ TERMINAL</span>
           <span class="panel-meta" id="term-meta">ready</span>
         </div>
         <div class="terminal-output" id="terminal-output"></div>
@@ -60,8 +58,23 @@
       </section>
 
       <section class="center-stack">
+        <!-- ENGAGEMENT -->
+        <div class="panel engagement-panel">
+          <div class="panel-header">
+            <span class="panel-title">◈ ENGAGEMENT</span>
+            <button class="icon-btn small" id="btn-new-eng" title="New">+</button>
+          </div>
+          <div class="eng-row">
+            <select id="eng-select" class="eng-select">
+              <option value="">— no engagement —</option>
+            </select>
+            <button class="btn small" id="btn-report">REPORT</button>
+          </div>
+          <div class="eng-meta" id="eng-meta">Select or create an engagement (client / job).</div>
+        </div>
+
         <div class="panel status-panel">
-          <div class="panel-header"><span class="panel-title">◈ SYSTEM STATUS</span></div>
+          <div class="panel-header"><span class="panel-title">◈ STATUS</span></div>
           <div class="status-grid">
             <div class="stat-box"><div class="stat-label">LOOP</div><div class="stat-value" id="loop-status">IDLE</div></div>
             <div class="stat-box"><div class="stat-label">PHASE</div><div class="stat-value" id="current-phase">—</div></div>
@@ -89,10 +102,8 @@
         </div>
 
         <div class="panel tools-panel">
-          <div class="panel-header"><span class="panel-title">◈ CYBER TOOLS</span></div>
-          <div class="tools-grid" id="tools-grid">
-            <!-- filled by JS -->
-          </div>
+          <div class="panel-header"><span class="panel-title">◈ TOOLS</span></div>
+          <div class="tools-grid" id="tools-grid"></div>
         </div>
       </section>
 
@@ -105,13 +116,14 @@
               <button class="tab" data-tab="exploit">EXPLOIT</button>
               <button class="tab" data-tab="detection">DETECT</button>
               <button class="tab" data-tab="hardening">HARDEN</button>
+              <button class="tab" data-tab="report">REPORT</button>
             </div>
           </div>
-          <div class="result-body" id="result-body">Authenticate and invoke an agent or tool.</div>
+          <div class="result-body" id="result-body">Select engagement → run agents/tools → generate REPORT.</div>
         </div>
         <div class="panel prayers-panel">
           <div class="panel-header">
-            <span class="panel-title">◈ PRAYER LOG</span>
+            <span class="panel-title">◈ PRAYERS</span>
             <button class="icon-btn small" id="btn-clear-logs">CLR</button>
           </div>
           <div class="prayer-log" id="prayer-log"></div>
@@ -120,7 +132,29 @@
     </div>
   </div>
 
-  <!-- SETTINGS -->
+  <!-- New Engagement Modal -->
+  <div class="modal hidden" id="eng-modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span>◈ NEW ENGAGEMENT</span>
+        <button class="icon-btn" id="btn-close-eng">✕</button>
+      </div>
+      <div class="modal-body">
+        <label>NAME *</label>
+        <input type="text" id="eng-name" placeholder="e.g. Acme Q3 Purple Team" spellcheck="false">
+        <label>CLIENT</label>
+        <input type="text" id="eng-client" placeholder="Client name" spellcheck="false">
+        <label>SCOPE / TARGETS</label>
+        <input type="text" id="eng-scope" placeholder="domains, IPs, apps" spellcheck="false">
+        <label>NOTES</label>
+        <input type="text" id="eng-notes" placeholder="optional" spellcheck="false">
+        <div class="modal-actions">
+          <button class="btn primary" id="btn-create-eng">CREATE</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="modal hidden" id="settings-modal">
     <div class="modal-box">
       <div class="modal-header">
@@ -130,7 +164,7 @@
       <div class="modal-body">
         <label>VENICE.AI API KEY</label>
         <input type="password" id="venice-key-input" placeholder="your key" spellcheck="false">
-        <p class="hint">Stored per-user in SQLite on the server. Never committed.</p>
+        <p class="hint">Stored per-user in SQLite. Never committed.</p>
         <div class="modal-actions">
           <button class="btn primary" id="btn-save-key">SAVE KEY</button>
           <button class="btn" id="btn-test-key">TEST</button>

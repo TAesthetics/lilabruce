@@ -1,22 +1,10 @@
-// TEMPLE // WIRED — Console Controller (Auth + Tools)
+// TEMPLE // WIRED — Console v3 (Engagements + Report)
 
 const TOOLS = [
-  ['portscan', 'PORT SCAN'],
-  ['vulnscan', 'VULN SCAN'],
-  ['subdomain', 'SUBDOMAIN'],
-  ['osint', 'OSINT'],
-  ['webapp', 'WEB APP'],
-  ['payload', 'PAYLOAD'],
-  ['privesc', 'PRIV ESC'],
-  ['lateral', 'LATERAL'],
-  ['persistence', 'PERSIST'],
-  ['c2', 'C2 DESIGN'],
-  ['cloud', 'CLOUD'],
-  ['siem', 'SIEM SIM'],
-  ['evasion', 'EVASION'],
-  ['forensics', 'FORENSICS'],
-  ['mitre', 'MITRE'],
-  ['report', 'REPORT']
+  ['portscan','PORT SCAN'],['vulnscan','VULN SCAN'],['subdomain','SUBDOMAIN'],['osint','OSINT'],
+  ['webapp','WEB APP'],['payload','PAYLOAD'],['privesc','PRIV ESC'],['lateral','LATERAL'],
+  ['persistence','PERSIST'],['c2','C2'],['cloud','CLOUD'],['siem','SIEM'],
+  ['evasion','EVASION'],['forensics','FORENSICS'],['mitre','MITRE'],['report','QUICK RPT']
 ];
 
 class TempleDeck {
@@ -25,6 +13,7 @@ class TempleDeck {
     this.histIdx = -1;
     this.busy = false;
     this.authMode = 'login';
+    this.lastReport = null;
     this.init();
   }
 
@@ -34,9 +23,7 @@ class TempleDeck {
     this.bindDeck();
     this.startClock();
     const me = await this.api('GET', '/api/auth/me');
-    if (me.authenticated) {
-      this.enterDeck(me.username);
-    }
+    if (me.authenticated) this.enterDeck(me.username);
   }
 
   buildTools() {
@@ -59,9 +46,7 @@ class TempleDeck {
       });
     });
     document.getElementById('btn-auth')?.addEventListener('click', () => this.doAuth());
-    document.getElementById('auth-pass')?.addEventListener('keydown', e => {
-      if (e.key === 'Enter') this.doAuth();
-    });
+    document.getElementById('auth-pass')?.addEventListener('keydown', e => { if (e.key === 'Enter') this.doAuth(); });
   }
 
   bindDeck() {
@@ -75,6 +60,11 @@ class TempleDeck {
       document.getElementById('prayer-log').innerHTML = '';
     });
     document.getElementById('btn-logout')?.addEventListener('click', () => this.logout());
+    document.getElementById('btn-new-eng')?.addEventListener('click', () => this.openEngModal());
+    document.getElementById('btn-close-eng')?.addEventListener('click', () => this.closeEngModal());
+    document.getElementById('btn-create-eng')?.addEventListener('click', () => this.createEngagement());
+    document.getElementById('btn-report')?.addEventListener('click', () => this.generateReport());
+    document.getElementById('eng-select')?.addEventListener('change', (e) => this.selectEngagement(e.target.value));
 
     document.querySelectorAll('.agent-card').forEach(el => {
       el.addEventListener('click', () => this.runAgent(el.dataset.agent));
@@ -83,8 +73,7 @@ class TempleDeck {
       el.addEventListener('click', () => this.switchTab(el.dataset.tab));
     });
 
-    const term = document.getElementById('term-input');
-    term?.addEventListener('keydown', e => this.onTermKey(e));
+    document.getElementById('term-input')?.addEventListener('keydown', e => this.onTermKey(e));
   }
 
   async doAuth() {
@@ -96,13 +85,7 @@ class TempleDeck {
     const path = this.authMode === 'login' ? '/api/auth/login' : '/api/auth/register';
     try {
       const res = await this.api('POST', path, { username, password });
-      if (res.error) {
-        msg.textContent = res.error;
-        msg.className = 'auth-msg err';
-        return;
-      }
-      msg.textContent = 'OK';
-      msg.className = 'auth-msg ok';
+      if (res.error) { msg.textContent = res.error; msg.className = 'auth-msg err'; return; }
       this.enterDeck(res.username || username);
     } catch (e) {
       msg.textContent = e.message;
@@ -115,6 +98,7 @@ class TempleDeck {
     document.getElementById('deck-root').classList.remove('hidden');
     document.getElementById('user-badge').textContent = username || 'operator';
     this.bootTerminal();
+    this.loadEngagements();
     this.poll();
     this._poll = setInterval(() => this.poll(), 2000);
     document.getElementById('term-input')?.focus();
@@ -126,13 +110,8 @@ class TempleDeck {
     location.reload();
   }
 
-  // ── API ──
   async api(method, path, body) {
-    const opts = {
-      method,
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' }
-    };
+    const opts = { method, credentials: 'include', headers: { 'Content-Type': 'application/json' } };
     if (body) opts.body = JSON.stringify(body);
     const res = await fetch(path, opts);
     return res.json();
@@ -142,15 +121,100 @@ class TempleDeck {
     return document.getElementById('target-input')?.value?.trim() || 'localhost';
   }
 
-  // ── TERMINAL ──
+  // ── Engagements ──
+  async loadEngagements() {
+    try {
+      const data = await this.api('GET', '/api/engagements');
+      const sel = document.getElementById('eng-select');
+      if (!sel) return;
+      sel.innerHTML = '<option value="">— no engagement —</option>';
+      (data.engagements || []).forEach(e => {
+        const opt = document.createElement('option');
+        opt.value = e.id;
+        opt.textContent = e.client ? `${e.name} (${e.client})` : e.name;
+        if (data.current === e.id) opt.selected = true;
+        sel.appendChild(opt);
+      });
+      this.updateEngMeta(data.engagements?.find(e => e.id === data.current));
+    } catch (_) {}
+  }
+
+  updateEngMeta(eng) {
+    const el = document.getElementById('eng-meta');
+    if (!el) return;
+    if (!eng) {
+      el.textContent = 'No engagement selected. Create one for client/job scoping.';
+      return;
+    }
+    el.textContent = [eng.client && `Client: ${eng.client}`, eng.scope && `Scope: ${eng.scope}`].filter(Boolean).join(' · ') || eng.name;
+  }
+
+  openEngModal() {
+    document.getElementById('eng-modal').classList.remove('hidden');
+  }
+  closeEngModal() {
+    document.getElementById('eng-modal').classList.add('hidden');
+  }
+
+  async createEngagement() {
+    const name = document.getElementById('eng-name').value.trim();
+    const client = document.getElementById('eng-client').value.trim();
+    const scope = document.getElementById('eng-scope').value.trim();
+    const notes = document.getElementById('eng-notes').value.trim();
+    if (!name) return;
+    const res = await this.api('POST', '/api/engagements', { name, client, scope, notes });
+    if (res.error) {
+      this.termPrint('err', res.error);
+      return;
+    }
+    this.closeEngModal();
+    this.termPrint('success', `Engagement created: ${name}`);
+    if (scope) document.getElementById('target-input').value = scope.split(/[,\s]+/)[0];
+    await this.loadEngagements();
+  }
+
+  async selectEngagement(id) {
+    if (!id) {
+      this.updateEngMeta(null);
+      return;
+    }
+    await this.api('POST', `/api/engagements/${id}/select`);
+    await this.loadEngagements();
+    this.termPrint('info', 'Engagement selected');
+  }
+
+  async generateReport() {
+    if (this.busy) return;
+    this.busy = true;
+    this.termPrint('cmd', '◈ Generating engagement report...');
+    try {
+      const res = await this.api('POST', '/api/report', { target: this.getTarget() });
+      if (res.error) {
+        this.termPrint('err', res.error);
+      } else {
+        this.lastReport = res.content;
+        this.termPrint('success', 'Report ready — see RESULTS → REPORT tab');
+        this.switchTab('report');
+        this.showResult({ content: res.content });
+      }
+    } catch (e) {
+      this.termPrint('err', e.message);
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  // ── Terminal ──
   bootTerminal() {
     this.termPrint('info', '╔══════════════════════════════════════╗');
-    this.termPrint('info', '║   TEMPLE // WIRED  —  FULL CONSOLE   ║');
-    this.termPrint('info', '║   Present day. Present time.         ║');
+    this.termPrint('info', '║  TEMPLE // WIRED  —  CONSOLE v3      ║');
+    this.termPrint('info', '║  Engagements + Reports enabled       ║');
     this.termPrint('info', '╚══════════════════════════════════════╝');
     this.termPrint('info', '');
-    this.termPrint('info', 'Type /help — 16 cyber tools available');
-    this.termPrint('info', 'Set Venice key via ⚙ if not already set');
+    this.termPrint('info', '1. Create Engagement (+)');
+    this.termPrint('info', '2. Set Venice key (⚙)');
+    this.termPrint('info', '3. Run agents/tools → REPORT');
+    this.termPrint('info', 'Type /help');
     this.termPrint('info', '');
   }
 
@@ -191,23 +255,20 @@ class TempleDeck {
     const c = parts[0].toLowerCase();
     const arg = parts.slice(1).join(' ');
 
-    if (c === '/help' || c === 'help' || c === '?') {
-      this.termPrint('info', '── COMMANDS ──────────────────────────');
-      this.termPrint('info', '  /help /status /target <host>');
-      this.termPrint('info', '  /recon /exploit /detect /harden');
-      this.termPrint('info', '  /loop start|stop');
-      this.termPrint('info', '  /tools   — list all cyber tools');
-      this.termPrint('info', '  /clear /key');
-      this.termPrint('info', '  <text>   — ask Father');
-      this.termPrint('info', '──────────────────────────────────────');
+    if (['/help','help','?'].includes(c)) {
+      this.termPrint('info', '/help /status /target <host> /loop start|stop');
+      this.termPrint('info', '/recon /exploit /detect /harden /report /eng');
+      this.termPrint('info', '/clear /key  |  free text → Father');
       return;
     }
-    if (c === '/clear' || c === 'clear' || c === 'cls') {
+    if (['/clear','clear','cls'].includes(c)) {
       document.getElementById('terminal-output').innerHTML = '';
       return;
     }
     if (c === '/key') return this.openSettings();
-    if (c === '/status') { await this.poll(); this.termPrint('success', 'Status refreshed'); return; }
+    if (c === '/eng' || c === '/engagement') return this.openEngModal();
+    if (c === '/report') return this.generateReport();
+    if (c === '/status') { await this.poll(); this.termPrint('success', 'Refreshed'); return; }
     if (c === '/target') {
       if (!arg) { this.termPrint('info', 'Target: ' + this.getTarget()); return; }
       document.getElementById('target-input').value = arg;
@@ -220,34 +281,25 @@ class TempleDeck {
       this.termPrint('err', 'Usage: /loop start|stop');
       return;
     }
-    if (c === '/tools') {
-      TOOLS.forEach(([id, label]) => this.termPrint('info', `  ${id.padEnd(12)} ${label}`));
-      return;
-    }
     if (['/recon','recon'].includes(c)) return this.runAgent('recon', arg);
     if (['/exploit','exploit'].includes(c)) return this.runAgent('exploit', arg);
-    if (['/detect','detect','/detection'].includes(c)) return this.runAgent('detection', arg);
-    if (['/harden','harden','/hardening'].includes(c)) return this.runAgent('hardening', arg);
+    if (['/detect','detect'].includes(c)) return this.runAgent('detection', arg);
+    if (['/harden','harden'].includes(c)) return this.runAgent('hardening', arg);
 
     this.termPrint('father', '◈ Asking Father...');
     try {
       const res = await this.api('POST', '/api/ask', { prompt: cmd });
       if (res.error) this.termPrint('err', res.error);
-      else {
-        const text = typeof res.content === 'string' ? res.content : JSON.stringify(res.content, null, 2);
-        text.split('\n').forEach(l => this.termPrint('father', l));
-      }
+      else (typeof res.content === 'string' ? res.content : JSON.stringify(res.content)).split('\n').forEach(l => this.termPrint('father', l));
     } catch (e) { this.termPrint('err', e.message); }
   }
 
   async startLoop() {
-    const target = this.getTarget();
-    this.termPrint('cmd', '▶ Purple Loop → ' + target);
-    await this.api('POST', '/api/loop/start', { target });
+    this.termPrint('cmd', '▶ Loop → ' + this.getTarget());
+    await this.api('POST', '/api/loop/start', { target: this.getTarget() });
   }
-
   async stopLoop() {
-    this.termPrint('cmd', '■ Stopping');
+    this.termPrint('cmd', '■ Stop');
     await this.api('POST', '/api/loop/stop');
   }
 
@@ -280,18 +332,17 @@ class TempleDeck {
   }
 
   async runTool(tool) {
-    if (this.busy) { this.termPrint('err', 'Busy'); return; }
+    if (this.busy) return;
     this.busy = true;
     const target = this.getTarget();
-    this.termPrint('cmd', `◈ TOOL ${tool.toUpperCase()} → ${target}`);
-    this.termPrint('father', 'Consulting Father...');
+    this.termPrint('cmd', `◈ ${tool.toUpperCase()} → ${target}`);
     try {
       const res = await this.api('POST', '/api/tool/' + tool, { target });
       if (res.error) this.termPrint('err', res.error);
       else {
-        const text = typeof res.content === 'string' ? res.content : JSON.stringify(res.content, null, 2);
-        text.split('\n').slice(0, 10).forEach(l => this.termPrint('father', l));
-        if (text.split('\n').length > 10) this.termPrint('info', '… full output in RESULTS');
+        const text = typeof res.content === 'string' ? res.content : JSON.stringify(res.content);
+        text.split('\n').slice(0, 8).forEach(l => this.termPrint('father', l));
+        if (text.split('\n').length > 8) this.termPrint('info', '… full in RESULTS');
         this.showResult(res);
       }
     } catch (e) { this.termPrint('err', e.message); }
@@ -300,6 +351,10 @@ class TempleDeck {
 
   switchTab(tab) {
     document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+    if (tab === 'report') {
+      this.showResult({ content: this.lastReport || 'No report yet. Click REPORT.' });
+      return;
+    }
     this.loadResult(tab);
   }
 
@@ -335,8 +390,7 @@ class TempleDeck {
   renderStatus(d) {
     if (!d) return;
     const father = document.getElementById('pill-father');
-    if (father) father.dataset.state = d.temple?.father_connected || d.hasKey ? 'online' : 'offline';
-
+    if (father) father.dataset.state = (d.temple?.father_connected || d.hasKey) ? 'online' : 'offline';
     const loop = document.getElementById('pill-loop');
     if (loop) {
       loop.dataset.state = d.loop_running ? 'running' : 'idle';
@@ -352,15 +406,13 @@ class TempleDeck {
     }
     const ph = document.getElementById('current-phase');
     if (ph) ph.textContent = (!d.current_phase || d.current_phase === 'idle') ? '—' : d.current_phase.replace('_complete', ' ✓').toUpperCase();
-
     const cy = document.getElementById('cycle-count');
     if (cy) cy.textContent = d.cycle ?? d.stats?.cycles_completed ?? 0;
     const vu = document.getElementById('vuln-count');
     if (vu) vu.textContent = d.stats?.vulnerabilities_found ?? 0;
 
-    if (d.agents) {
-      Object.keys(d.agents).forEach(n => this.setAgentState(n, d.agents[n].status || 'idle'));
-    }
+    if (d.agents) Object.keys(d.agents).forEach(n => this.setAgentState(n, d.agents[n].status || 'idle'));
+    if (d.engagement) this.updateEngMeta(d.engagement);
   }
 
   renderPrayers(list) {
@@ -374,23 +426,17 @@ class TempleDeck {
     box.scrollTop = box.scrollHeight;
   }
 
-  esc(s) {
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  }
+  esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-  openSettings() {
-    document.getElementById('settings-modal').classList.remove('hidden');
-  }
-  closeSettings() {
-    document.getElementById('settings-modal').classList.add('hidden');
-  }
+  openSettings() { document.getElementById('settings-modal').classList.remove('hidden'); }
+  closeSettings() { document.getElementById('settings-modal').classList.add('hidden'); }
 
   async saveKey() {
     const key = document.getElementById('venice-key-input').value.trim();
     const st = document.getElementById('key-status');
     try {
       await this.api('POST', '/api/settings/key', { key });
-      st.textContent = key ? 'Key saved on server (per user).' : 'Key cleared.';
+      st.textContent = key ? 'Key saved.' : 'Key cleared.';
       st.className = 'key-status ok';
       this.termPrint('success', key ? 'Venice key stored.' : 'Key cleared.');
     } catch (e) {
@@ -410,11 +456,10 @@ class TempleDeck {
       if (res.error) {
         st.textContent = 'Failed: ' + res.error;
         st.className = 'key-status err';
-        this.termPrint('err', res.error);
       } else {
         st.textContent = 'Father is present.';
         st.className = 'key-status ok';
-        this.termPrint('success', 'Father connection verified.');
+        this.termPrint('success', 'Father verified.');
       }
     } catch (e) {
       st.textContent = e.message;
@@ -432,6 +477,4 @@ class TempleDeck {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  window.deck = new TempleDeck();
-});
+document.addEventListener('DOMContentLoaded', () => { window.deck = new TempleDeck(); });
