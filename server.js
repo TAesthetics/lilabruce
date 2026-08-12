@@ -1,6 +1,6 @@
 /**
- * 🏛️ TEMPLE // WIRED — Console v3.1 (Quality)
- * Fewer gimmicks. Better signals.
+ * 🏛️ TEMPLE // WIRED — Console v3.2
+ * Quality build + alpha feedback
  */
 
 const express = require('express');
@@ -52,6 +52,15 @@ db.exec(`
     kind TEXT NOT NULL,
     target TEXT,
     content TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS feedback (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    username TEXT,
+    rating INTEGER,
+    category TEXT,
+    message TEXT NOT NULL,
     created_at TEXT NOT NULL
   );
 `);
@@ -173,7 +182,6 @@ function saveHistory(uid, engagementId, kind, target, content) {
   } catch (_) {}
 }
 
-// ── High-quality agent prompts ──
 const AGENT_PROMPTS = {
   recon: {
     system: SYSTEM_CORE + ' You specialize in reconnaissance. MITRE ATT&CK where useful.',
@@ -298,7 +306,6 @@ async function runAgent(uid, name, target, apiKey, engagementId) {
   return runtime.results[uid][name];
 }
 
-// ── Focused toolset (quality over quantity) ──
 const TOOL_PROMPTS = {
   portscan: {
     system: SYSTEM_CORE,
@@ -560,6 +567,30 @@ app.post('/api/engagements/:id/select', authMiddleware, (req, res) => {
   res.json({ ok: true, id: eng.id });
 });
 
+// Feedback (alpha)
+app.post('/api/feedback', authMiddleware, (req, res) => {
+  const message = (req.body?.message || '').trim();
+  const category = (req.body?.category || 'general').trim().slice(0, 40);
+  let rating = parseInt(req.body?.rating, 10);
+  if (!Number.isFinite(rating) || rating < 1 || rating > 5) rating = null;
+
+  if (!message || message.length < 5) {
+    return res.status(400).json({ error: 'Message too short (min 5 chars)' });
+  }
+  if (message.length > 4000) {
+    return res.status(400).json({ error: 'Message too long (max 4000)' });
+  }
+
+  const id = uuidv4();
+  db.prepare(
+    'INSERT INTO feedback (id, user_id, username, rating, category, message, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+  ).run(id, req.user.id, req.user.username, rating, category, message, new Date().toISOString());
+
+  logPrayer(req.user.id, 'response', 'feedback', `feedback sent (${category}${rating ? ', ' + rating + '/5' : ''})`);
+  console.log(`[feedback] ${req.user.username}: [${category}] ${rating || '-'} ${message.slice(0, 80)}`);
+  res.json({ ok: true, id });
+});
+
 // Core API
 app.get('/api/status', authMiddleware, (req, res) => {
   const uid = req.user.id;
@@ -650,7 +681,6 @@ app.post('/api/ask', authMiddleware, async (req, res) => {
   res.json(result);
 });
 
-// Report — quality focused
 app.post('/api/report', authMiddleware, async (req, res) => {
   const uid = req.user.id;
   const engId = runtime.currentEngagement[uid];
@@ -664,7 +694,6 @@ app.post('/api/report', authMiddleware, async (req, res) => {
     : db.prepare('SELECT kind, target, created_at FROM history WHERE user_id = ? ORDER BY created_at DESC LIMIT 20').all(uid);
 
   const target = req.body?.target || runtime.loops[uid]?.target || eng?.scope || 'unknown';
-
   const slice = (x) => (typeof x === 'string' ? x.slice(0, 1500) : x);
 
   const prompt = `Write a client-facing purple-team report from the following engagement data.
@@ -764,5 +793,5 @@ app.get('*', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`🏛️  TEMPLE // WIRED v3.1 (quality) on :${PORT}`);
+  console.log(`🏛️  TEMPLE // WIRED v3.2 on :${PORT}`);
 });
