@@ -1,4 +1,4 @@
-// TEMPLE // WIRED — Console v3.1 (Quality)
+// TEMPLE // WIRED — Console v3.2 (+ feedback)
 
 const TOOLS = [
   ['portscan', 'PORT SCAN'],
@@ -19,6 +19,7 @@ class TempleDeck {
     this.busy = false;
     this.authMode = 'login';
     this.lastReport = null;
+    this.fbRating = null;
     this.init();
   }
 
@@ -72,6 +73,17 @@ class TempleDeck {
     document.getElementById('btn-create-eng')?.addEventListener('click', () => this.createEngagement());
     document.getElementById('btn-report')?.addEventListener('click', () => this.generateReport());
     document.getElementById('eng-select')?.addEventListener('change', (e) => this.selectEngagement(e.target.value));
+
+    // Feedback
+    document.getElementById('btn-feedback')?.addEventListener('click', () => this.openFeedback());
+    document.getElementById('btn-close-feedback')?.addEventListener('click', () => this.closeFeedback());
+    document.getElementById('btn-send-feedback')?.addEventListener('click', () => this.sendFeedback());
+    document.querySelectorAll('.rate-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.fbRating = parseInt(btn.dataset.r, 10);
+        document.querySelectorAll('.rate-btn').forEach(b => b.classList.toggle('active', b === btn));
+      });
+    });
 
     document.querySelectorAll('.agent-card').forEach(el => {
       el.addEventListener('click', () => this.runAgent(el.dataset.agent));
@@ -163,6 +175,49 @@ class TempleDeck {
   openEngModal() { document.getElementById('eng-modal').classList.remove('hidden'); }
   closeEngModal() { document.getElementById('eng-modal').classList.add('hidden'); }
 
+  openFeedback() {
+    this.fbRating = null;
+    document.querySelectorAll('.rate-btn').forEach(b => b.classList.remove('active'));
+    const msg = document.getElementById('fb-message');
+    if (msg) msg.value = '';
+    const st = document.getElementById('fb-status');
+    if (st) { st.textContent = ''; st.className = 'key-status'; }
+    document.getElementById('feedback-modal').classList.remove('hidden');
+  }
+  closeFeedback() {
+    document.getElementById('feedback-modal').classList.add('hidden');
+  }
+
+  async sendFeedback() {
+    const message = document.getElementById('fb-message')?.value?.trim() || '';
+    const category = document.getElementById('fb-category')?.value || 'general';
+    const st = document.getElementById('fb-status');
+    if (message.length < 5) {
+      st.textContent = 'Write at least 5 characters.';
+      st.className = 'key-status err';
+      return;
+    }
+    try {
+      const res = await this.api('POST', '/api/feedback', {
+        message,
+        category,
+        rating: this.fbRating
+      });
+      if (res.error) {
+        st.textContent = res.error;
+        st.className = 'key-status err';
+        return;
+      }
+      st.textContent = 'Received. Thanks.';
+      st.className = 'key-status ok';
+      this.termPrint('success', 'feedback sent');
+      setTimeout(() => this.closeFeedback(), 900);
+    } catch (e) {
+      st.textContent = e.message;
+      st.className = 'key-status err';
+    }
+  }
+
   async createEngagement() {
     const name = document.getElementById('eng-name').value.trim();
     const client = document.getElementById('eng-client').value.trim();
@@ -212,7 +267,7 @@ class TempleDeck {
   bootTerminal() {
     this.termPrint('info', 'TEMPLE // WIRED  —  quality build');
     this.termPrint('info', 'Engagement → Agents/Tools → Report');
-    this.termPrint('info', '/help for commands');
+    this.termPrint('info', '/help  ·  ✉ feedback in topbar');
     this.termPrint('info', '');
   }
 
@@ -261,7 +316,7 @@ class TempleDeck {
     const arg = parts.slice(1).join(' ');
 
     if (['/help', 'help', '?'].includes(c)) {
-      this.termPrint('info', '/target <host>  /loop start|stop  /report  /eng');
+      this.termPrint('info', '/target <host>  /loop start|stop  /report  /eng  /feedback');
       this.termPrint('info', '/recon /exploit /detect /harden  /key  /clear');
       this.termPrint('info', 'free text → Father');
       return;
@@ -272,6 +327,7 @@ class TempleDeck {
     }
     if (c === '/key') return this.openSettings();
     if (c === '/eng') return this.openEngModal();
+    if (c === '/feedback' || c === '/fb') return this.openFeedback();
     if (c === '/report') return this.generateReport();
     if (c === '/status') {
       await this.poll();
