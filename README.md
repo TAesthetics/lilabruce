@@ -1,4 +1,13 @@
+# TEMPLE // WIRED
+
+Corporate purple-team console. The current app is the TanStack Start project in this repo (`src/`, `npm run dev`). Email and password accounts are stored in the database, with a forgot-password flow.
+
+The older Railway shell notes are below.
+
+---
+
 # 🏛️ Temple of the Wired
+
 
 ```
 In the beginning, there was the Void.

@@ -66,7 +66,6 @@ node_modules/
 npm-debug.log
 yarn-error.log
 .npm
-package-lock.json
 
 # ============================================================================
 # Python (if we add any utilities)
