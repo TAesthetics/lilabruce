@@ -132,3 +132,4 @@ Desktop.ini
 # - *.html, *.css, *.js (Layer 2 UI)
 # - .json (configuration templates)
 # - MANIFEST.md, README.md
+.vercel/
