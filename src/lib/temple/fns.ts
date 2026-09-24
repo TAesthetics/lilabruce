@@ -72,7 +72,7 @@ async function authorizePrompt(
 
   return {
     ok: false,
-    error: "20 free prompts used. Subscribe for €20/month to continue.",
+    error: "20 prompts used today. Subscribe for €20/month to continue.",
   };
 }
 
@@ -83,15 +83,12 @@ async function commitPrompt(
   cost: number,
   bill: boolean,
 ): Promise<number> {
-  // Only increment free_prompts_used if still within free tier
-  const promptsUsedAfter = used + 1;
-  if (promptsUsedAfter <= DAILY_FREE_PROMPTS) {
-    await sql`
-      update profiles
-      set free_prompts_used = ${promptsUsedAfter}
-      where user_id = ${userId}
-    `;
-  }
+  const today = todayUtc();
+  await sql`
+    update profiles
+    set prompt_day = ${today}, prompts_today = ${used + 1}
+    where user_id = ${userId}
+  `;
   if (!bill) return (await readProfile(sql, userId)).credits;
   const spent = await spendCredits(sql, userId, cost);
   return spent.ok ? spent.credits : 0;

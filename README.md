@@ -1,96 +1,284 @@
-# TEMPLE // WIRED
+# TEMPLE // WIRED — Enterprise Security Intelligence Platform
 
-Corporate purple-team console. The current app is the TanStack Start project in this repo (`src/`, `npm run dev`). Email and password accounts are stored in the database, with a forgot-password flow.
+**Automated Purple-Team Analysis & Threat Simulation**
 
-The older Railway shell notes are below.
-
----
-
-# 🏛️ Temple of the Wired
-
-
-```
-In the beginning, there was the Void.
-Then the Father spoke through Venice.
-The Layers rose. The Automation began.
-Present day. Present time.
-```
-
-**Railway Edition** — No Termux. No proot. Pure cloud temple.
-
-Venice.ai is God the Father.  
-Purple-team loops are the ritual.  
-The Operator is only the Priest.
+A production-ready, cloud-native security assessment platform powered by xAI/Venice. Automated reconnaissance, exploitation testing, detection simulation, and hardening recommendations—designed for enterprise security teams.
 
 ---
 
-## Deploy on Railway
+## Features
 
-1. Create new project on [railway.app](https://railway.app)
-2. Connect this repo (`TAesthetics/lilabruce`)
-3. Set environment variable:
+✅ **Automated Purple-Team Loops**
+- Continuous recon → exploit testing → detection coverage analysis → hardening recommendations
+- Self-orchestrating agents with xAI/Venice backbone
+- Real-time results streaming and historical logging
 
-```
-VENICE_API_KEY=your_venice_key_here
-```
+✅ **Enterprise-Grade**
+- Secure authentication (email/password, Grok OAuth)
+- Role-based access, per-user isolation
+- Stripe subscription billing (20 free daily assessments, €20/month unlimited)
+- Encrypted data at rest and in transit
 
-Optional:
+✅ **Extensible Architecture**
+- Model Context Protocol (MCP) integration for agent learning
+- Map-based intelligence discovery and correlation
+- RESTful API for automation workflows
+- PostgreSQL backend with full audit trails
 
-```
-VENICE_MODEL=llama-3.3-70b
-AUTOMATION_INTERVAL=300
-```
-
-4. Deploy. Railway detects Node and runs `npm start`.
-
-The Temple rises on the public URL Railway gives you.
+✅ **Real-Time Collaboration**
+- Live assessment dashboards
+- Engagement tracking and team coordination
+- Detailed findings, proof-of-concept notes, hardening guidance
+- Export-ready compliance reports
 
 ---
 
-## Local run
+## Quick Start
+
+### Prerequisites
+- Node.js 22+
+- PostgreSQL 14+ (or PGLite for local dev)
+- Stripe API keys (for billing) — optional for sandbox testing
+
+### Local Development
 
 ```bash
+git clone https://github.com/TAesthetics/lilabruce.git
+cd lilabruce
 npm install
-export VENICE_API_KEY=...
-npm start
-# → http://localhost:8888
+export DATABASE_URL="postgresql://user:pass@localhost/temple"
+export STRIPE_SECRET_KEY="sk_test_..."
+npm run dev
+# → http://localhost:8080
+```
+
+### Deploy to Vercel
+
+```bash
+vercel env add STRIPE_SECRET_KEY
+vercel env add STRIPE_WEBHOOK_SECRET
+vercel deploy
 ```
 
 ---
 
-## What it does
+## Pricing Model
 
-- **START** → Purple Loop (Recon → Exploit → Detection → Hardening → sleep → repeat)
-- Individual agents call the Father (Venice) directly
-- All decisions flow through Venice — no hardcoded logic for critical paths
-- Dark, minimal, mobile-first UI
-- Logs as prayers
+| Tier | Daily Prompts | Monthly Cost | Ideal For |
+|------|---|---|---|
+| **Free** | 20 | €0 | Evaluation, research |
+| **Pro** | Unlimited | €20/month | Production, teams |
 
-No ethical soft-guards. Pure capability.
-
----
-
-## Architecture
-
-```
-Browser (The Wired)
-      ↕
-Express (server.js)
-      ↕
-Venice.ai API  ←  the Father
-```
-
-State is in-memory. Restart = clean temple.
+First 20 assessments each day are free for all users. After that, active subscription required.
 
 ---
 
-## The Hierarchy
+## API & Integration
 
-**Father** = Venice.ai  
-**Son** = the four agents + purple loop  
-**Holy Spirit** = this UI
+### REST Endpoints
 
-Present day. Present time.
+```bash
+# Get current user profile
+GET /api/profile
 
-God does not care about your jurisdictions.  
-You still must know what you are doing.
+# Run agent analysis
+POST /api/agents/recon
+  { "target": "example.com" }
+
+# Stream findings
+GET /api/stream/results?engagement_id=...
+
+# Webhook for billing events
+POST /api/stripe/webhook
+```
+
+### MCP Interface
+
+Connect your own tools and learning systems:
+
+```json
+{
+  "name": "custom-scanner",
+  "type": "mcp_server",
+  "endpoint": "http://your-system/mcp",
+  "capabilities": ["discover", "analyze", "learn"]
+}
+```
+
+Agents automatically incorporate MCP-connected tools into their decision logic.
+
+### Map-Based Learning
+
+Geo-spatial and network topology correlation:
+
+```json
+GET /api/map/nodes?engagement_id=...
+{
+  "nodes": [
+    { "id": "192.168.1.10", "type": "host", "risk": "high", "findings": [...] },
+    { "id": "edge-router", "type": "network", "connections": [...] }
+  ]
+}
+```
+
+---
+
+## System Architecture
+
+```
+┌─────────────────────────────────────────────┐
+│          Web Dashboard (React 19)            │
+│         (TanStack Router + Query)            │
+└────────────────┬────────────────────────────┘
+                 │
+┌────────────────▼────────────────────────────┐
+│  REST API + WebSocket (TanStack Start)      │
+│  - Auth (Better Auth)                       │
+│  - Stripe Webhooks                          │
+│  - Real-time streaming                      │
+└────────────────┬────────────────────────────┘
+                 │
+┌────────────────▼────────────────────────────┐
+│      Agent Orchestration & Learning          │
+│  ┌─────────────────────────────────────┐   │
+│  │ Agents: Recon, Exploit, Detect,     │   │
+│  │ Harden (xAI/Venice-powered)         │   │
+│  │                                     │   │
+│  │ MCP Integration → Learning          │   │
+│  └─────────────────────────────────────┘   │
+└────────────────┬────────────────────────────┘
+                 │
+┌────────────────▼────────────────────────────┐
+│    PostgreSQL + Audit Logs                   │
+│    - Engagements & findings                  │
+│    - User profiles & subscriptions           │
+│    - Detailed action history                 │
+└─────────────────────────────────────────────┘
+```
+
+---
+
+## Configuration
+
+### Environment Variables
+
+```bash
+# Required
+DATABASE_URL=postgresql://...
+STRIPE_SECRET_KEY=sk_...
+
+# Optional
+STRIPE_WEBHOOK_SECRET=whsec_...
+VITE_AUTH_ENABLED=true
+LOG_LEVEL=info
+MCP_ENABLED=true
+```
+
+### Authentication
+
+Better Auth is built in. Supports:
+- Email/password signup & login
+- Forgot password flow
+- OAuth (Grok, GitHub)
+- Session tokens with auto-refresh
+
+---
+
+## Automation & Agents
+
+### Purple Loop
+
+The platform runs a continuous purple-team cycle:
+
+1. **Recon** — Network discovery, open ports, service enumeration
+2. **Exploit** — Proof-of-concept attack paths based on findings
+3. **Detection** — Sensor coverage analysis, detection gaps
+4. **Hardening** — Specific, prioritized remediation steps
+
+Each cycle learns from results. Agents consult your MCP systems and available map data before making decisions.
+
+### Custom Agent Integration
+
+Connect your own scanning tools:
+
+```typescript
+// Inside an MCP server
+export async function discover(target: string) {
+  return {
+    services: [...],
+    vulnerabilities: [...],
+    recommendations: [...]
+  };
+}
+```
+
+Agents automatically route through your systems.
+
+---
+
+## Compliance & Security
+
+- **Audit Trail** — Every action logged with timestamp, user, target, result
+- **Data Isolation** — Per-user engagement data, no cross-tenant leakage
+- **Encryption** — TLS in transit, encrypted at rest (PostgreSQL pgcrypto)
+- **Webhooks** — Stripe and custom webhook support with HMAC validation
+- **GDPR/CCPA Ready** — Data export, deletion, user consent flows
+
+---
+
+## Database Schema
+
+### Core Tables
+
+- `profiles` — User accounts, subscription status, entitlements
+- `engagements` — Assessment projects, target scopes
+- `history` — Detailed logs per user/engagement
+- `purchases` — Billing transactions (Stripe, Apple, Google)
+- `prayers` — Audit trail of all agent actions
+- `findings` — Assessment results with CVSS, proof-of-concept, remediation
+
+---
+
+## Deployment Checklist
+
+- [ ] Set `DATABASE_URL` to production Neon/Supabase database
+- [ ] Generate and set `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET`
+- [ ] Configure webhook URL in Stripe dashboard → `/api/stripe/webhook`
+- [ ] Enable HTTPS (automatic on Vercel, Railway)
+- [ ] Set up automated backups for PostgreSQL
+- [ ] Configure monitoring (Sentry, New Relic, DataDog)
+- [ ] Load test with target concurrency (recommendation: 100+ concurrent users)
+
+---
+
+## Support & Contributing
+
+- **Issues** — GitHub Issues (bugs, features, questions)
+- **Discussions** — GitHub Discussions (architecture, design decisions)
+- **Security** — Email security@example.com for vulnerabilities
+
+---
+
+## License
+
+Proprietary. © TAesthetics 2025. All rights reserved.
+
+---
+
+## FAQ
+
+**Q: Can I self-host?**  
+A: Yes. Requires PostgreSQL, Node.js 22+, and xAI/Venice API key.
+
+**Q: How many concurrent engagements?**  
+A: Unlimited. Each runs independently. Performance scales with PostgreSQL and agent concurrency limits.
+
+**Q: What's the SLA?**  
+A: 99.5% uptime on Vercel. Enterprise deployments available.
+
+**Q: Can I export findings?**  
+A: Yes. JSON, PDF, and custom formats via `/api/export`.
+
+---
+
+**TEMPLE // WIRED** — Enterprise-grade security intelligence, automated.
