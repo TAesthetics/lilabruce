@@ -8,6 +8,11 @@ async function ensureTempleColumns(sql: Sql) {
   await sql`alter table profiles add column if not exists prompt_day date`;
   await sql`alter table profiles add column if not exists prompts_today integer not null default 0`;
   await sql`alter table profiles add column if not exists paid_day date`;
+  await sql`alter table profiles add column if not exists subscription_status text default 'none'`;
+  await sql`alter table profiles add column if not exists subscription_id text`;
+  await sql`alter table profiles add column if not exists stripe_customer_id text`;
+  await sql`alter table profiles add column if not exists subscription_started_at timestamptz`;
+  await sql`alter table profiles add column if not exists subscription_ends_at timestamptz`;
 }
 
 export async function ensureProfile(sql: Sql, userId: string) {
@@ -57,13 +62,17 @@ export async function readProfile(sql: Sql, userId: string): Promise<ProfileStat
     prompt_day: string | null;
     prompts_today: number;
     paid_day: string | null;
+    subscription_status: string | null;
   }>`
-    select credits, pro_until, entitlements, venice_key, handle, prompt_day, prompts_today, paid_day
+    select credits, pro_until, entitlements, venice_key, handle, prompt_day, prompts_today, paid_day, subscription_status
     from profiles where user_id = ${userId}
   `;
   const row = rows[0];
   const entitlements = parseEntitlements(row?.entitlements);
-  const pro = isPro(row?.pro_until) || entitlements.includes("pro");
+  const pro =
+    isPro(row?.pro_until) ||
+    entitlements.includes("pro") ||
+    row?.subscription_status === "active";
   const today = new Date().toISOString().slice(0, 10);
   const day = row?.prompt_day ? String(row.prompt_day).slice(0, 10) : "";
   const paidDay = row?.paid_day ? String(row.paid_day).slice(0, 10) : "";

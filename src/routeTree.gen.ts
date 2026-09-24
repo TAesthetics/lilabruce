@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as DeckRouteImport } from './routes/deck'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as MapRouteImport } from './routes/map'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ReelRouteImport } from './routes/reel'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
@@ -39,6 +40,11 @@ const DeckRoute = DeckRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MapRoute = MapRouteImport.update({
+  id: '/map',
+  path: '/map',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyRoute = PrivacyRouteImport.update({
@@ -82,6 +88,7 @@ export interface FileRoutesByFullPath {
   '/account': typeof AccountRoute
   '/deck': typeof DeckRoute
   '/login': typeof LoginRoute
+  '/map': typeof MapRoute
   '/privacy': typeof PrivacyRoute
   '/reel': typeof ReelRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -95,6 +102,7 @@ export interface FileRoutesByTo {
   '/account': typeof AccountRoute
   '/deck': typeof DeckRoute
   '/login': typeof LoginRoute
+  '/map': typeof MapRoute
   '/privacy': typeof PrivacyRoute
   '/reel': typeof ReelRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -109,6 +117,7 @@ export interface FileRoutesById {
   '/account': typeof AccountRoute
   '/deck': typeof DeckRoute
   '/login': typeof LoginRoute
+  '/map': typeof MapRoute
   '/privacy': typeof PrivacyRoute
   '/reel': typeof ReelRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -124,6 +133,7 @@ export interface FileRouteTypes {
     | '/account'
     | '/deck'
     | '/login'
+    | '/map'
     | '/privacy'
     | '/reel'
     | '/reset-password'
@@ -137,6 +147,7 @@ export interface FileRouteTypes {
     | '/account'
     | '/deck'
     | '/login'
+    | '/map'
     | '/privacy'
     | '/reel'
     | '/reset-password'
@@ -150,6 +161,7 @@ export interface FileRouteTypes {
     | '/account'
     | '/deck'
     | '/login'
+    | '/map'
     | '/privacy'
     | '/reel'
     | '/reset-password'
@@ -164,6 +176,7 @@ export interface RootRouteChildren {
   AccountRoute: typeof AccountRoute
   DeckRoute: typeof DeckRoute
   LoginRoute: typeof LoginRoute
+  MapRoute: typeof MapRoute
   PrivacyRoute: typeof PrivacyRoute
   ReelRoute: typeof ReelRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -201,6 +214,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/map': {
+      id: '/map'
+      path: '/map'
+      fullPath: '/map'
+      preLoaderRoute: typeof MapRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy': {
@@ -260,6 +280,7 @@ const rootRouteChildren: RootRouteChildren = {
   AccountRoute: AccountRoute,
   DeckRoute: DeckRoute,
   LoginRoute: LoginRoute,
+  MapRoute: MapRoute,
   PrivacyRoute: PrivacyRoute,
   ReelRoute: ReelRoute,
   ResetPasswordRoute: ResetPasswordRoute,

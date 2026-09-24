@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutGrid,
+  Network,
   ShoppingBag,
   TerminalSquare,
   UserRound,
@@ -11,6 +12,7 @@ import { cn } from "@/lib/utils";
 
 const NAV = [
   { to: "/deck" as const, label: "Tasks", icon: TerminalSquare },
+  { to: "/map" as const, label: "Map", icon: Network },
   { to: "/shop" as const, label: "Shop", icon: ShoppingBag },
   { to: "/account" as const, label: "Account", icon: UserRound },
 ];

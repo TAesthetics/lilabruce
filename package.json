@@ -18,7 +18,11 @@
     "check:auth": "node scripts/check-auth-invariant.mjs",
     "test": "node --test 'scripts/**/*.test.mjs' && node --experimental-strip-types --test src/lib/app-data/app-data.test.ts src/lib/auth/gate-identity.test.ts",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "setup:mobile": "node scripts/setup-mobile.mjs",
+    "setup:mobile:ios": "node scripts/setup-mobile.mjs ios",
+    "setup:mobile:android": "node scripts/setup-mobile.mjs android",
+    "app:sync": "npx cap sync"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",
