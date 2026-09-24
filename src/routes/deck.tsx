@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { UserButton } from "@/lib/auth/gates";
 import { cn } from "@/lib/utils";
 import { FREE_TOOLS, KALI_TOOLS, DAILY_FREE_PROMPTS } from "@/lib/temple/catalog";
+import { addFinding, listFindings, setFindingStatus } from "@/lib/temple/findings";
 import { TOOL_DEFS } from "@/lib/temple/prompts";
 import {
   askFather,
@@ -62,6 +63,10 @@ function DeckPage() {
     refetchInterval: 4000,
   });
   const data = snap.data;
+  const findings = useQuery({
+    queryKey: ["findings"],
+    queryFn: () => listFindings(),
+  });
   const [target, setTargetLocal] = useState("localhost");
   const [tab, setTab] = useState<string>("recon");
   const [result, setResult] = useState("");
@@ -75,6 +80,7 @@ function DeckPage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [fbOpen, setFbOpen] = useState(false);
   const [mobilePane, setMobilePane] = useState<"chat" | "ops" | "out">("ops");
+  const [authorized, setAuthorized] = useState(false);
   const loopRef = useRef(false);
   const targetRef = useRef(target);
   const termRef = useRef<HTMLDivElement>(null);
@@ -97,6 +103,9 @@ function DeckPage() {
     termRef.current?.scrollTo({ top: termRef.current.scrollHeight });
   }, [lines]);
   useEffect(() => {
+    setAuthorized(window.localStorage.getItem("temple-authorized") === "1");
+  }, []);
+  useEffect(() => {
     if (booted.current) return;
     booted.current = true;
     print("info", "Purple-team chat. Ask about the target, or type /help.");
@@ -107,10 +116,18 @@ function DeckPage() {
   }
 
   async function refresh() {
-    await snap.refetch();
+    await Promise.all([snap.refetch(), findings.refetch()]);
+  }
+
+  function allowRun() {
+    if (authorized) return true;
+    print("err", "Confirm this is an authorized engagement before running a task.");
+    setMobilePane("ops");
+    return false;
   }
 
   async function doAgent(name: AgentName, override?: string) {
+    if (!allowRun()) return;
     if (busy) {
       print("err", "busy");
       return;
@@ -125,6 +142,7 @@ function DeckPage() {
       } else {
         print("success", `${name} ok`);
         setTab(name);
+        setMobilePane("out");
         setResult(res.content);
       }
     } catch (e) {
@@ -171,7 +189,7 @@ function DeckPage() {
   }
 
   async function doTool(tool: string) {
-    if (busy) return;
+    if (!allowRun() || busy) return;
     setBusy(true);
     print("cmd", `${tool} → ${target}`);
     try {
@@ -179,9 +197,10 @@ function DeckPage() {
       if (!res.ok) print("err", res.error);
       else {
         const bits = res.content.split("\n");
-        bits.slice(0, 6).forEach((l) => print("father", l));
-        if (bits.length > 6) print("info", "… full in RESULTS");
+        print("father", bits.slice(0, 6).join("\n"));
+        if (bits.length > 6) print("info", "Saved to the board.");
         setResult(res.content);
+        setMobilePane("out");
       }
     } catch (e) {
       print("err", e instanceof Error ? e.message : "failed");
@@ -192,7 +211,7 @@ function DeckPage() {
   }
 
   async function doReport() {
-    if (busy) return;
+    if (!allowRun() || busy) return;
     setBusy(true);
     print("cmd", "◈ Report…");
     try {
@@ -202,6 +221,7 @@ function DeckPage() {
         print("success", "Report ready");
         setTab("report");
         setResult(res.content);
+        setMobilePane("out");
       }
     } finally {
       setBusy(false);
@@ -344,7 +364,7 @@ function DeckPage() {
               mobilePane === p ? "border-primary text-primary" : "border-border text-muted",
             )}
           >
-            {p === "ops" ? "Tasks" : p === "chat" ? "Chat" : "Result"}
+            {p === "ops" ? "Tasks" : p === "chat" ? "Chat" : "Board"}
           </button>
         ))}
       </div>
@@ -438,6 +458,53 @@ function DeckPage() {
                 ? "Pro includes prompts."
                 : `${data?.profile.promptsLeft ?? DAILY_FREE_PROMPTS} of ${DAILY_FREE_PROMPTS} free prompts left today.`}
             </p>
+            <p className="text-[12px] text-muted">
+              Port, web, OSINT, and vuln run a real connect, DNS, HTTP, or TLS check and save it.
+              On a phone with Termux, use{" "}
+              <a className="text-fg underline-offset-2 hover:underline" href="/lab/termux-wire.sh">
+                the lab script
+              </a>
+              .
+            </p>
+            <label className="flex items-start gap-2 text-[13px] text-muted">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={authorized}
+                onChange={(e) => {
+                  setAuthorized(e.target.checked);
+                  window.localStorage.setItem("temple-authorized", e.target.checked ? "1" : "0");
+                  if (e.target.checked) {
+                    void addFinding({
+                      data: {
+                        source: "scope",
+                        target,
+                        title: "Scope confirmed",
+                        detail: `Operator confirmed authorization for ${target}.`,
+                      },
+                    }).then(() => findings.refetch());
+                  }
+                }}
+              />
+              <span>I am authorized to assess this target. Tasks stay blocked until this is on.</span>
+            </label>
+            <ol className="grid grid-cols-2 gap-1.5 text-[11px] text-muted">
+              {[
+                ["scope", "1 Scope"],
+                ["recon", "2 Recon"],
+                ["exploit", "3 Attack path"],
+                ["detection", "4 Detect"],
+                ["hardening", "5 Harden"],
+                ["report", "6 Report"],
+              ].map(([id, label]) => {
+                const done = (findings.data ?? []).some((f) => f.source === id || (id === "scope" && authorized));
+                return (
+                  <li key={id} className={done ? "text-ok" : "text-faint"}>
+                    {done ? "✓" : "○"} {label}
+                  </li>
+                );
+              })}
+            </ol>
             <div className="grid grid-cols-2 gap-2">
               {AGENT_META.map((a) => {
                 const Icon = a.icon;
@@ -612,7 +679,78 @@ function DeckPage() {
         </div>
 
         <div className={cn("flex min-h-0 flex-col gap-2.5", mobilePane !== "out" && "hidden md:flex")}>
-          <Panel title="Results" className="min-h-[220px] flex-1">
+          <Panel
+            title="Board"
+            meta={`${(findings.data ?? []).filter((f) => f.status === "open").length} open`}
+            action={
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  const rows = findings.data ?? [];
+                  const text = [
+                    `# Board — ${target}`,
+                    "",
+                    ...rows.map(
+                      (f, i) =>
+                        `${i + 1}. [${f.severity}/${f.status}] ${f.title}\n${f.tactic} · ${f.target}\nNext: ${f.next_step}`,
+                    ),
+                  ].join("\n");
+                  void navigator.clipboard?.writeText(text);
+                  print("success", "Board copied");
+                }}
+              >
+                Copy
+              </Button>
+            }
+            className="min-h-[220px] flex-1"
+          >
+            <div className="min-h-0 flex-1 space-y-2 overflow-auto bg-bg p-2">
+              {(findings.data ?? []).length === 0 ? (
+                <p className="px-1 text-[12px] text-faint">
+                  Confirm scope, then run a task. Each result lands here as a finding with a next step.
+                </p>
+              ) : (
+                (findings.data ?? []).map((f) => (
+                  <article key={f.id} className="rounded-sm border border-border bg-surface p-2.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-[13px] text-fg">{f.title}</p>
+                      <span
+                        className={cn(
+                          "shrink-0 font-sans text-[9px] tracking-[0.12em] uppercase",
+                          f.severity === "critical" || f.severity === "high" ? "text-danger" : "text-muted",
+                        )}
+                      >
+                        {f.severity}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-[11px] text-faint">
+                      {f.tactic} · {f.status}
+                    </p>
+                    {f.next_step ? <p className="mt-1 text-[12px] text-muted">{f.next_step}</p> : null}
+                    <div className="mt-2 flex gap-1">
+                      {(["open", "accepted", "closed"] as const).map((status) => (
+                        <button
+                          key={status}
+                          type="button"
+                          onClick={() =>
+                            void setFindingStatus({ data: { id: f.id, status } }).then(() => findings.refetch())
+                          }
+                          className={cn(
+                            "h-7 rounded-sm border px-2 font-sans text-[9px] tracking-[0.08em] uppercase",
+                            f.status === status ? "border-primary text-primary" : "border-border text-faint",
+                          )}
+                        >
+                          {status}
+                        </button>
+                      ))}
+                    </div>
+                  </article>
+                ))
+              )}
+            </div>
+          </Panel>
+          <Panel title="Results" className="hidden min-h-[180px] md:flex md:flex-1">
             <div className="flex flex-wrap gap-1 border-b border-border px-2 py-2">
               {["recon", "exploit", "detection", "hardening", "report"].map((t) => (
                 <button

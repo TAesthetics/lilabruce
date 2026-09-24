@@ -7,7 +7,9 @@ import {
   TOOL_DEFS,
   type AgentName,
 } from "./prompts";
+import { ensureFindings, recordFinding } from "./findings";
 import { CREDIT_COSTS, DAILY_FREE_PROMPTS, FREE_TOOLS, KALI_TOOLS } from "./catalog";
+import { collectLive, isLiveTool } from "./wire";
 import { callFather } from "./father";
 import {
   ensureProfile,
@@ -340,6 +342,7 @@ export const runAgent = createServerFn({ method: "POST" })
     `;
     const engId = await currentEngagementId(sql, context.userId);
     await saveHistory(sql, context.userId, engId, name, target, result.content);
+    await recordFinding(sql, context.userId, { source: name, target, content: result.content });
     await logPrayer(sql, context.userId, "response", `${name}-agent`, "done");
 
     if (name === "recon") {
@@ -405,20 +408,55 @@ export const runTool = createServerFn({ method: "POST" })
     if (!gate.ok) return gate;
 
     const target = data.target.trim() || "localhost";
+    await ensureFindings(sql);
+    let evidence = "";
+    if (isLiveTool(data.tool)) {
+      const recent = await sql<{ n: number }>`
+        select count(*)::int as n from findings
+        where user_id = ${context.userId}
+          and source = ${data.tool}
+          and created_at > now() - interval '1 hour'
+      `;
+      if (Number(recent[0]?.n ?? 0) >= 15) {
+        return { ok: false as const, error: "Live check limit for this hour. Wait, or use the Termux script on the phone." };
+      }
+      const scope = await sql<{ id: string }>`
+        select id from findings where user_id = ${context.userId} and source = 'scope' limit 1
+      `;
+      if (scope.length === 0) {
+        return { ok: false as const, error: "Confirm scope before a live check." };
+      }
+      try {
+        evidence = await collectLive(data.tool, target);
+      } catch (err) {
+        return { ok: false as const, error: err instanceof Error ? err.message : "Live check failed" };
+      }
+    }
     await logPrayer(sql, context.userId, "invoke", `tool-${data.tool}`, `${data.tool} → ${target}`);
-    const result = await callFather(def.prompt(target), def.system);
-    if (!result.ok) {
-      await logPrayer(sql, context.userId, "error", `tool-${data.tool}`, result.error);
-      return { ok: false as const, error: result.error, credits: gate.credits };
+    const result = await callFather(
+      evidence
+        ? `${def.prompt(target)}\n\nLIVE EVIDENCE from the lab runner. Treat it as ground truth. Do not invent open ports or headers.\n\n${evidence}`
+        : def.prompt(target),
+      def.system,
+    );
+    const content = result.ok ? `${evidence ? evidence + "\n\n" : ""}${result.content}` : evidence;
+    if (!content) {
+      await logPrayer(sql, context.userId, "error", `tool-${data.tool}`, result.ok ? "empty" : result.error);
+      return { ok: false as const, error: result.ok ? "Empty result" : result.error, credits: gate.credits };
     }
     const credits = await commitPrompt(sql, context.userId, gate.used, CREDIT_COSTS.tool, gate.bill);
     await logPrayer(sql, context.userId, "response", `tool-${data.tool}`, "done");
     const engId = await currentEngagementId(sql, context.userId);
-    await saveHistory(sql, context.userId, engId, "tool-" + data.tool, target, result.content);
+    await saveHistory(sql, context.userId, engId, "tool-" + data.tool, target, content);
+    await recordFinding(sql, context.userId, {
+      source: data.tool,
+      target,
+      content,
+    });
     return {
       ok: true as const,
-      content: result.content,
-      provider: result.provider,
+      content,
+      provider: evidence ? "wire" : result.ok ? result.provider : "wire",
       credits,
     };
   });
@@ -441,6 +479,12 @@ export const askFather = createServerFn({ method: "POST" })
     }
     const credits = await commitPrompt(sql, context.userId, gate.used, CREDIT_COSTS.ask, gate.bill);
     await logPrayer(sql, context.userId, "response", "terminal", "done");
+    const targetLine = prompt.split("\n")[0]?.replace(/^Target:\s*/i, "") || "";
+    await recordFinding(sql, context.userId, {
+      source: "ask",
+      target: targetLine.slice(0, 200),
+      content: result.content,
+    });
     return {
       ok: true as const,
       content: result.content,
@@ -455,6 +499,7 @@ export const generateReport = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     await ensureProfile(sql, context.userId);
+    await ensureFindings(sql);
     const gate = await authorizePrompt(sql, context.userId, CREDIT_COSTS.report);
     if (!gate.ok) return gate;
 
@@ -473,12 +518,24 @@ export const generateReport = createServerFn({ method: "POST" })
     for (const r of results) byKind[r.kind] = r.content.slice(0, 1500);
 
     const target = data.target.trim() || eng?.scope || "unknown";
+    const findings = await sql<{ title: string; severity: string; status: string; next_step: string }>`
+      select title, severity, status, next_step from findings
+      where user_id = ${context.userId}
+      order by created_at desc
+      limit 12
+    `;
+    const findingBlock = findings.length
+      ? findings.map((f, i) => `${i + 1}. [${f.severity}/${f.status}] ${f.title} — ${f.next_step}`).join("\n")
+      : "(none yet)";
     const prompt = `Write a client-facing purple-team report from the following engagement data.
 
 ENGAGEMENT:
 ${eng ? `Name: ${eng.name}\nClient: ${eng.client || "—"}\nScope: ${eng.scope || "—"}\nNotes: ${eng.notes || "—"}` : "Ad-hoc (no engagement record)"}
 
 PRIMARY TARGET: ${target}
+
+OPEN FINDINGS:
+${findingBlock}
 
 AGENT OUTPUTS:
 ### Recon
