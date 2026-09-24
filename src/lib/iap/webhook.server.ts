@@ -23,6 +23,8 @@ export async function handleStripeWebhook(rawBody: string, signature: string | n
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as {
       id: string;
+      subscription?: string;
+      customer?: string;
       metadata?: { userId?: string; productId?: string };
       client_reference_id?: string | null;
     };
@@ -32,6 +34,17 @@ export async function handleStripeWebhook(rawBody: string, signature: string | n
       const sql = await getSql();
       await ensureProfile(sql, userId);
       await fulfillPurchase(sql, userId, productId, "stripe", session.id);
+
+      // Set subscription status if this is a subscription product
+      if (session.subscription && session.customer) {
+        await sql`
+          update profiles
+          set subscription_status = 'active',
+              subscription_id = ${session.subscription},
+              stripe_customer_id = ${session.customer}
+          where user_id = ${userId}
+        `;
+      }
     }
   }
 
@@ -39,6 +52,8 @@ export async function handleStripeWebhook(rawBody: string, signature: string | n
     const invoice = event.data.object as {
       id: string;
       billing_reason?: string | null;
+      subscription?: string;
+      customer?: string;
       parent?: { subscription_details?: { metadata?: { userId?: string; productId?: string } } };
     };
     if (invoice.billing_reason !== "subscription_cycle") {
@@ -54,6 +69,44 @@ export async function handleStripeWebhook(rawBody: string, signature: string | n
       const sql = await getSql();
       await ensureProfile(sql, userId);
       await fulfillPurchase(sql, userId, productId, "stripe", `invoice_${invoice.id}`);
+    }
+  }
+
+  // Handle subscription.updated
+  if (event.type === "customer.subscription.updated") {
+    const sub = event.data.object as {
+      id: string;
+      customer: string;
+      status: string;
+      metadata?: { userId?: string };
+    };
+    const userId = sub.metadata?.userId;
+    if (userId) {
+      const sql = await getSql();
+      const status = sub.status === "active" ? "active" : "canceled";
+      await sql`
+        update profiles
+        set subscription_status = ${status}
+        where user_id = ${userId}
+      `;
+    }
+  }
+
+  // Handle subscription.deleted
+  if (event.type === "customer.subscription.deleted") {
+    const sub = event.data.object as {
+      id: string;
+      customer: string;
+      metadata?: { userId?: string };
+    };
+    const userId = sub.metadata?.userId;
+    if (userId) {
+      const sql = await getSql();
+      await sql`
+        update profiles
+        set subscription_status = 'canceled'
+        where user_id = ${userId}
+      `;
     }
   }
 

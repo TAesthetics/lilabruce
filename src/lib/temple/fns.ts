@@ -53,23 +53,26 @@ function todayUtc(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-/** Twenty prompts a day are free in alpha. After that, the monthly payment is required. */
+/** Twenty prompts are free for all users. After that, a €20/month subscription is required. */
 async function authorizePrompt(
   sql: SqlClient,
   userId: string,
   _cost: number,
 ): Promise<
-  | { ok: true; bill: boolean; used: number; credits: number }
+  | { ok: true; bill: false; used: number; credits: number }
   | { ok: false; error: string }
 > {
   const profile = await readProfile(sql, userId);
-  const used = profile.promptsToday;
-  if (profile.pro || used < DAILY_FREE_PROMPTS) {
+  const used = profile.promptsUsed;
+
+  // Allow prompts if: subscription is active OR less than 20 free prompts used
+  if (profile.subscriptionStatus === "active" || used < DAILY_FREE_PROMPTS) {
     return { ok: true, bill: false, used, credits: profile.credits };
   }
+
   return {
     ok: false,
-    error: "20 prompts used today. €15 per month to continue.",
+    error: "20 free prompts used. Subscribe for €20/month to continue.",
   };
 }
 
@@ -80,12 +83,15 @@ async function commitPrompt(
   cost: number,
   bill: boolean,
 ): Promise<number> {
-  const today = todayUtc();
-  await sql`
-    update profiles
-    set prompt_day = ${today}, prompts_today = ${used + 1}
-    where user_id = ${userId}
-  `;
+  // Only increment free_prompts_used if still within free tier
+  const promptsUsedAfter = used + 1;
+  if (promptsUsedAfter <= DAILY_FREE_PROMPTS) {
+    await sql`
+      update profiles
+      set free_prompts_used = ${promptsUsedAfter}
+      where user_id = ${userId}
+    `;
+  }
   if (!bill) return (await readProfile(sql, userId)).credits;
   const spent = await spendCredits(sql, userId, cost);
   return spent.ok ? spent.credits : 0;

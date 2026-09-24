@@ -135,6 +135,18 @@ export const confirmStripeSession = createServerFn({ method: "POST" })
     await ensureProfile(sql, context.userId);
     const result = await fulfillPurchase(sql, context.userId, productId, "stripe", session.id);
     if (!result.ok) return result;
+
+    // Set subscription status if this is a subscription
+    if (session.subscription && session.customer) {
+      await sql`
+        update profiles
+        set subscription_status = 'active',
+            subscription_id = ${session.subscription},
+            stripe_customer_id = ${session.customer}
+        where user_id = ${context.userId}
+      `;
+    }
+
     await logPrayer(sql, context.userId, "response", "shop", `stripe ${productId}`);
     return { ok: true as const, productId };
   });

@@ -353,9 +353,9 @@ function DeckPage() {
         <Panel
           title="Chat"
           meta={
-            data?.profile.pro
-              ? "included"
-              : `${data?.profile.promptsLeft ?? DAILY_FREE_PROMPTS} of ${DAILY_FREE_PROMPTS} left`
+            data?.profile.subscriptionStatus === "active"
+              ? "unlimited"
+              : `${data?.profile.promptsLeft ?? DAILY_FREE_PROMPTS} of ${DAILY_FREE_PROMPTS} free`
           }
           className={cn("min-h-[70dvh] md:min-h-0", mobilePane !== "chat" && "hidden md:flex")}
         >
@@ -412,9 +412,9 @@ function DeckPage() {
             </Button>
           </form>
           <p className="border-t border-border px-3 py-2 text-[11px] text-faint">
-            {DAILY_FREE_PROMPTS} prompts a day are free in alpha. After that, €15 per month.{" "}
+            {DAILY_FREE_PROMPTS} free prompts. Then €20/month for unlimited.{" "}
             <Link to="/shop" className="text-fg underline-offset-2 hover:underline">
-              Pay
+              Subscribe
             </Link>
           </p>
         </Panel>
@@ -434,9 +434,9 @@ function DeckPage() {
               />
             </div>
             <p className="text-[12px] text-muted">
-              {data?.profile.pro
-                ? "Pro includes prompts."
-                : `${data?.profile.promptsLeft ?? DAILY_FREE_PROMPTS} of ${DAILY_FREE_PROMPTS} free prompts left today.`}
+              {data?.profile.subscriptionStatus === "active"
+                ? "✓ Subscription active · Unlimited prompts"
+                : `${data?.profile.promptsLeft ?? DAILY_FREE_PROMPTS} of ${DAILY_FREE_PROMPTS} free prompts left.`}
             </p>
             <div className="grid grid-cols-2 gap-2">
               {AGENT_META.map((a) => {

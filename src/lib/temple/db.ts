@@ -5,9 +5,12 @@ import { DAILY_FREE_PROMPTS } from "./catalog";
 let schemaReady: Promise<void> | null = null;
 
 async function ensureTempleColumns(sql: Sql) {
-  await sql`alter table profiles add column if not exists prompt_day date`;
-  await sql`alter table profiles add column if not exists prompts_today integer not null default 0`;
-  await sql`alter table profiles add column if not exists paid_day date`;
+  await sql`alter table profiles add column if not exists free_prompts_used integer not null default 0`;
+  await sql`alter table profiles add column if not exists subscription_status text default 'none'`;
+  await sql`alter table profiles add column if not exists subscription_id text`;
+  await sql`alter table profiles add column if not exists stripe_customer_id text`;
+  await sql`alter table profiles add column if not exists subscription_started_at timestamptz`;
+  await sql`alter table profiles add column if not exists subscription_ends_at timestamptz`;
 }
 
 export async function ensureProfile(sql: Sql, userId: string) {
@@ -54,21 +57,23 @@ export async function readProfile(sql: Sql, userId: string): Promise<ProfileStat
     entitlements: unknown;
     venice_key: string;
     handle: string | null;
-    prompt_day: string | null;
-    prompts_today: number;
+    free_prompts_used: number;
+    subscription_status: string | null;
     paid_day: string | null;
   }>`
-    select credits, pro_until, entitlements, venice_key, handle, prompt_day, prompts_today, paid_day
+    select credits, pro_until, entitlements, venice_key, handle, free_prompts_used, subscription_status, paid_day
     from profiles where user_id = ${userId}
   `;
   const row = rows[0];
   const entitlements = parseEntitlements(row?.entitlements);
   const pro = isPro(row?.pro_until) || entitlements.includes("pro");
+  const subscriptionStatus = (row?.subscription_status ?? "none") as "none" | "active" | "canceled";
   const today = new Date().toISOString().slice(0, 10);
-  const day = row?.prompt_day ? String(row.prompt_day).slice(0, 10) : "";
   const paidDay = row?.paid_day ? String(row.paid_day).slice(0, 10) : "";
-  const promptsToday = day === today ? Number(row?.prompts_today ?? 0) : 0;
   const paidToday = paidDay === today;
+  const promptsUsed = Number(row?.free_prompts_used ?? 0);
+  const promptsLeft = Math.max(0, DAILY_FREE_PROMPTS - promptsUsed);
+
   return {
     credits: Number(row?.credits ?? 0),
     pro,
@@ -76,8 +81,9 @@ export async function readProfile(sql: Sql, userId: string): Promise<ProfileStat
     entitlements,
     hasVenice: false,
     handle: row?.handle ?? null,
-    promptsToday,
-    promptsLeft: pro ? DAILY_FREE_PROMPTS : Math.max(0, DAILY_FREE_PROMPTS - promptsToday),
+    promptsUsed,
+    promptsLeft,
+    subscriptionStatus,
     paidToday,
   };
 }

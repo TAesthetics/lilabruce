@@ -1,6 +1,6 @@
 export type ProductType = "consumable" | "non_consumable" | "subscription";
 
-export type ProductId = "month_15";
+export type ProductId = "month_20";
 
 export interface CatalogProduct {
   id: ProductId;
@@ -20,18 +20,18 @@ export interface CatalogProduct {
 
 export const CATALOG: CatalogProduct[] = [
   {
-    id: "month_15",
-    name: "Monthly",
-    blurb: "€15 per month. After 20 prompts in a day, this keeps the console open.",
-    priceUsd: 15,
-    priceLabel: "€15 / month",
+    id: "month_20",
+    name: "Unlimited Prompts",
+    blurb: "€20 per month. Unlimited prompts after the first 20 free.",
+    priceUsd: 20,
+    priceLabel: "€20 / month",
     type: "subscription",
     credits: 0,
     entitlement: "pro",
     period: "month",
     currency: "eur",
-    appleProductId: "temple.month.15",
-    googleProductId: "temple.month.15",
+    appleProductId: "temple.month.20",
+    googleProductId: "temple.month.20",
     highlight: true,
   },
 ];
@@ -55,7 +55,7 @@ export const FREE_TOOLS = [
 
 export const KALI_TOOLS = ["privesc", "lateral", "evasion", "mitre"] as const;
 
-export const STRIPE_MINIMUM_USD = 15;
+export const STRIPE_MINIMUM_USD = 20;
 
 export function billedByStripe(product: Pick<CatalogProduct, "priceUsd">): boolean {
   return product.priceUsd >= STRIPE_MINIMUM_USD;

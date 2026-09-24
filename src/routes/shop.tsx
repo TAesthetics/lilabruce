@@ -69,8 +69,11 @@ function ShopPage() {
   return (
     <TempleShell credits={profile?.credits} pro={profile?.pro} right={<Clock />}>
       <div className="mx-auto w-full max-w-5xl px-4 py-6">
-        <p className="font-sans text-[11px] tracking-[0.2em] text-cyan uppercase">After 20 prompts</p>
-        <h1 className="mt-1 font-sans text-2xl font-semibold tracking-tight">Pay</h1>
+        <p className="font-sans text-[11px] tracking-[0.2em] text-cyan uppercase">Subscription</p>
+        <h1 className="mt-1 font-sans text-2xl font-semibold tracking-tight">Unlimited Prompts</h1>
+        <p className="mt-2 text-[13px] text-muted">
+          You have {profile?.promptsLeft ?? 20} free prompts left. Subscribe for €20/month for unlimited access.
+        </p>
         {status === "success" ? (
           <p className="mt-3 rounded-sm border border-ok/50 px-3 py-2 text-[13px] text-ok">
             {paidNote || "Checking the Stripe payment…"}

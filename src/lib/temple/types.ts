@@ -31,8 +31,9 @@ export interface ProfileState {
   entitlements: string[];
   hasVenice: boolean;
   handle: string | null;
-  promptsToday: number;
-  promptsLeft: number;
+  promptsUsed: number; // Total free prompts used (lifelong)
+  promptsLeft: number; // Remaining free prompts (20 - used)
+  subscriptionStatus: "none" | "active" | "canceled"; // Subscription status
   paidToday: boolean;
 }
 

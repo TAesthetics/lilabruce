@@ -73,16 +73,16 @@ function AccountPage() {
 
         <section className="mt-4 rounded-lg border border-border bg-surface p-4">
           <h2 className="font-sans text-[12px] font-semibold tracking-[0.14em] text-primary uppercase">
-            Model
+            Prompts
           </h2>
           <p className="mt-2 text-[13px] text-muted">
-            xAI is built into the server. The key is not shown and cannot be changed here.
+            {profile?.subscriptionStatus === "active"
+              ? "Your subscription is active. Unlimited prompts."
+              : `${profile?.promptsLeft ?? DAILY_FREE_PROMPTS} of ${DAILY_FREE_PROMPTS} free prompts left. Subscribe for €20/month.`}
           </p>
-          <p className="mt-2 text-[12px] text-faint">
-            {profile?.pro
-              ? "Pro includes prompts."
-              : `${profile?.promptsLeft ?? DAILY_FREE_PROMPTS} of ${DAILY_FREE_PROMPTS} free prompts left today. After that, €15 per month.`}
-          </p>
+          {profile?.subscriptionStatus === "active" && profile?.pro ? (
+            <p className="mt-2 text-[11px] text-cyan uppercase tracking-[0.05em]">✓ Premium Active</p>
+          ) : null}
         </section>
 
         <section className="mt-4 rounded-lg border border-danger/40 bg-surface p-4">
