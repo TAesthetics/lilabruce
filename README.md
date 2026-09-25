@@ -10,14 +10,20 @@ Sideload that file on an Android phone. Allow install from unknown sources, then
 
 This build is a debug APK. The Play Store needs a signed AAB from the `android/` project, not this file.
 
-## Server
+## Railway
 
-The app opens [https://turbo-earth-amber-gold.grok.me](https://turbo-earth-amber-gold.grok.me). Chat and agents use Venice on the server. Set this only in the server environment, never in the app:
+The repo includes an Android project. Railway must use the Dockerfile, not Gradle. `railway.toml` already says that.
+
+In the Railway service, set:
 
 ```
 VENICE_API_KEY=your_venice_key
 VENICE_MODEL=llama-3.3-70b
 ```
+
+Optional, for data that survives a restart: add a Postgres plugin and set `DATABASE_URL`. Without it the app uses a local database on the container disk.
+
+Railway injects `PORT`. The server listens on `0.0.0.0` and that port.
 
 ## Local
 

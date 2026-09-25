@@ -112,7 +112,9 @@ async function createPgliteSql(): Promise<Sql> {
   globalRef.__pgliteInstance__ ??= (async () => {
     const { mkdirSync } = await import("node:fs");
     const { PGlite } = await import("@electric-sql/pglite");
-    const dataDir = process.env.PGLITE_DIR || "/workspace/.data/pglite";
+    const dataDir =
+      process.env.PGLITE_DIR ||
+      (process.env.RAILWAY_ENVIRONMENT ? "/tmp/pglite" : "/workspace/.data/pglite");
     mkdirSync(dataDir, { recursive: true });
     const pg = new PGlite(dataDir, {
       parsers: {
