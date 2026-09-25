@@ -1,96 +1,27 @@
 # TEMPLE // WIRED
 
-Corporate purple-team console. The current app is the TanStack Start project in this repo (`src/`, `npm run dev`). Email and password accounts are stored in the database, with a forgot-password flow.
+Android app for an authorized security assessment. Scope, exposure check, findings, and a report.
 
-The older Railway shell notes are below.
+## Download
 
----
+[temple-wired.apk](releases/temple-wired.apk)
 
-# 🏛️ Temple of the Wired
+Sideload that file on an Android phone. Allow install from unknown sources, then open it. Package id: `app.templewired.console`.
 
+This build is a debug APK. The Play Store needs a signed AAB from the `android/` project, not this file.
 
-```
-In the beginning, there was the Void.
-Then the Father spoke through Venice.
-The Layers rose. The Automation began.
-Present day. Present time.
-```
+## Server
 
-**Railway Edition** — No Termux. No proot. Pure cloud temple.
-
-Venice.ai is God the Father.  
-Purple-team loops are the ritual.  
-The Operator is only the Priest.
-
----
-
-## Deploy on Railway
-
-1. Create new project on [railway.app](https://railway.app)
-2. Connect this repo (`TAesthetics/lilabruce`)
-3. Set environment variable:
+The app opens [https://turbo-earth-amber-gold.grok.me](https://turbo-earth-amber-gold.grok.me). Chat and agents use Venice on the server. Set this only in the server environment, never in the app:
 
 ```
-VENICE_API_KEY=your_venice_key_here
-```
-
-Optional:
-
-```
+VENICE_API_KEY=your_venice_key
 VENICE_MODEL=llama-3.3-70b
-AUTOMATION_INTERVAL=300
 ```
 
-4. Deploy. Railway detects Node and runs `npm start`.
-
-The Temple rises on the public URL Railway gives you.
-
----
-
-## Local run
+## Local
 
 ```bash
 npm install
-export VENICE_API_KEY=...
-npm start
-# → http://localhost:8888
+npm run dev
 ```
-
----
-
-## What it does
-
-- **START** → Purple Loop (Recon → Exploit → Detection → Hardening → sleep → repeat)
-- Individual agents call the Father (Venice) directly
-- All decisions flow through Venice — no hardcoded logic for critical paths
-- Dark, minimal, mobile-first UI
-- Logs as prayers
-
-No ethical soft-guards. Pure capability.
-
----
-
-## Architecture
-
-```
-Browser (The Wired)
-      ↕
-Express (server.js)
-      ↕
-Venice.ai API  ←  the Father
-```
-
-State is in-memory. Restart = clean temple.
-
----
-
-## The Hierarchy
-
-**Father** = Venice.ai  
-**Son** = the four agents + purple loop  
-**Holy Spirit** = this UI
-
-Present day. Present time.
-
-God does not care about your jurisdictions.  
-You still must know what you are doing.
