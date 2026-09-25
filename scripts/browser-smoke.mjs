@@ -90,7 +90,7 @@ function compareAgainstBaseline(verdict) {
 
 let browser = null;
 try {
-  browser = await chromium.launch({
+  browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium',
     headless: true,
     args: ["--no-sandbox", "--disable-dev-shm-usage"],
   });
