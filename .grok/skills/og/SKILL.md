@@ -2,7 +2,7 @@
 
 This skill manages Open Graph share cards for applications.
 
-## Brand-asset pass
+## Brand-asset pass:
 
 The brand-asset pass generates share cards using the `/workspace/.grok/og-pending` marker file. Staleness is bounded at 10 minutes. The pass self-checks its output with:
 
