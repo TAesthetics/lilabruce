@@ -50,13 +50,18 @@ function Home() {
           <span className="text-primary">On your phone.</span>
         </h1>
         <p className="mt-5 max-w-lg text-[15px] leading-relaxed text-muted">
-          TEMPLE // WIRED is the iPhone and Android app for authorized purple-team
+          TEMPLE // WIRED is the Android app for authorized purple-team
           work. Pick a target, run Recon, Exploit, Detect, or Harden, then ask the
           assistant to refine the plan.
         </p>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-          <Link to="/deck">
+          <a href="/temple-wired.apk" download="temple-wired.apk">
             <Button variant="solid" className="min-w-44">
+              Download APK
+            </Button>
+          </a>
+          <Link to="/deck">
+            <Button variant="primary" className="min-w-44">
               Start a task
             </Button>
           </Link>
@@ -92,30 +97,24 @@ function Home() {
             <div className="mb-2 inline-flex items-center gap-2 text-cyan">
               <Smartphone className="size-4" />
               <span className="font-sans text-[11px] tracking-[0.16em] uppercase">
-                Store ready
+                Android
               </span>
             </div>
             <h2 className="font-sans text-xl font-semibold tracking-tight">
-              Same app on iPhone and Android.
+              Android app
             </h2>
             <p className="mt-2 text-[13px] leading-relaxed text-muted">
-              Add it to your home screen and work tasks full screen. The App Store
-              and Play Store builds are this app: Apple bills through the App Store,
-              Google through Play, and the web uses Stripe after the free prompts.
+              Download the APK and install it on your phone. Allow installs from
+              this source, then open TEMPLE WIRED.
             </p>
           </div>
           <div className="flex flex-col gap-2">
             <a
-              href="/?install=1&platform=ios"
+              href="/temple-wired.apk"
+              download="temple-wired.apk"
               className="inline-flex h-12 items-center justify-center rounded-sm border border-fg bg-fg px-5 font-sans text-[11px] font-semibold tracking-[0.12em] text-bg uppercase"
             >
-              Add to iPhone
-            </a>
-            <a
-              href="/?install=1&platform=android"
-              className="inline-flex h-12 items-center justify-center rounded-sm border border-border px-5 font-sans text-[11px] font-semibold tracking-[0.12em] text-fg uppercase hover:border-primary hover:text-primary"
-            >
-              Add to Android
+              Download APK
             </a>
           </div>
         </div>

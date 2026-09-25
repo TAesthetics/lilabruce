@@ -4,7 +4,7 @@ Android app for an authorized security assessment. Scope, exposure check, findin
 
 ## Download
 
-[temple-wired.apk](releases/temple-wired.apk)
+Direct file: [temple-wired.apk](https://github.com/TAesthetics/lilabruce/releases/download/v0.1.0/temple-wired.apk)
 
 Sideload that file on an Android phone. Allow install from unknown sources, then open it. Package id: `app.templewired.console`.
 
