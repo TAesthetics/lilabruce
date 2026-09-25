@@ -52,24 +52,68 @@ function probePort(host: string, port: number): Promise<"open" | "closed" | "fil
   });
 }
 
-async function tcpScan(host: string): Promise<string> {
+async function scanPorts(host: string): Promise<number[]> {
   const open: number[] = [];
-  const closed: number[] = [];
   for (let i = 0; i < PORTS.length; i += 6) {
     const batch = PORTS.slice(i, i + 6);
     const results = await Promise.all(batch.map(async (port) => [port, await probePort(host, port)] as const));
     for (const [port, state] of results) {
       if (state === "open") open.push(port);
-      else if (state === "closed") closed.push(port);
     }
   }
+  return open;
+}
+
+async function tcpScan(host: string): Promise<string> {
+  const open = await scanPorts(host);
   return [
     `TCP connect scan of ${host}`,
     `Open: ${open.length ? open.join(", ") : "none"}`,
-    `Closed: ${closed.length}`,
-    `Filtered or unanswered: ${PORTS.length - open.length - closed.length}`,
-    "Method: TCP connect, no payloads, no banner grabs that send exploit data.",
+    `Checked: ${PORTS.join(", ")}`,
+    "Method: TCP connect. No payloads.",
   ].join("\n");
+}
+
+const HIGH_PORTS = new Set([23, 445, 1433, 3306, 3389, 5432, 5900, 6379, 9200]);
+
+export function portNote(port: number): { severity: "high" | "medium" | "info"; note: string } {
+  if (HIGH_PORTS.has(port)) {
+    return {
+      severity: "high",
+      note: "This service is reachable. Restrict who can connect, and confirm it should be exposed.",
+    };
+  }
+  if (port === 22 || port === 21) {
+    return {
+      severity: "medium",
+      note: "Remote access is reachable. Prefer keys over passwords and limit the source addresses.",
+    };
+  }
+  if (port === 80) {
+    return { severity: "info", note: "HTTP is open. Serve the app on HTTPS and set the security headers." };
+  }
+  if (port === 443 || port === 8443) {
+    return { severity: "info", note: "TLS is reachable. Check the certificate date and the response headers." };
+  }
+  return { severity: "medium", note: "A service answered. Confirm it is in scope and not a forgotten listener." };
+}
+
+export async function collectExposure(target: string): Promise<{
+  host: string;
+  text: string;
+  open: { port: number; severity: "high" | "medium" | "info"; note: string }[];
+}> {
+  const host = hostOf(target);
+  await assertReachable(host);
+  const [dns, openPorts, http, cert] = await Promise.all([
+    dnsProbe(host).catch((err: Error) => `DNS failed: ${err.message}`),
+    scanPorts(host),
+    httpProbe(host),
+    tlsProbe(host),
+  ]);
+  const open = openPorts.map((port) => ({ port, ...portNote(port) }));
+  const text = [dns, `Open ports: ${openPorts.length ? openPorts.join(", ") : "none"}`, http, cert].join("\n\n");
+  return { host, text, open };
 }
 
 async function httpProbe(host: string): Promise<string> {

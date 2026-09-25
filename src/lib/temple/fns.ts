@@ -9,8 +9,8 @@ import {
 } from "./prompts";
 import { ensureFindings, recordFinding } from "./findings";
 import { CREDIT_COSTS, DAILY_FREE_PROMPTS, FREE_TOOLS, KALI_TOOLS } from "./catalog";
-import { collectLive, isLiveTool } from "./wire";
-import { callFather } from "./father";
+import { collectExposure, collectLive, isLiveTool } from "./wire";
+import { callFather, modelConfigured } from "./father";
 import {
   ensureProfile,
   logPrayer,
@@ -187,7 +187,7 @@ export const getSnapshot = createServerFn({ method: "GET" })
       else if (results[name]) agents[name] = "complete";
     }
 
-    const father = process.env.XAI_API_KEY ? "online" : "offline";
+    const father = modelConfigured() ? "online" : "offline";
 
     return {
       profile,
@@ -391,7 +391,7 @@ export const sealCycle = createServerFn({ method: "POST" })
 
 export const runTool = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator((input: { tool: string; target: string }) => input)
+  .validator((input: { tool: string; target: string; authorized?: boolean }) => input)
   .handler(async ({ context, data }) => {
     const def = TOOL_DEFS[data.tool];
     if (!def) return { ok: false as const, error: "Unknown tool" };
@@ -424,7 +424,16 @@ export const runTool = createServerFn({ method: "POST" })
         select id from findings where user_id = ${context.userId} and source = 'scope' limit 1
       `;
       if (scope.length === 0) {
-        return { ok: false as const, error: "Confirm scope before a live check." };
+        if (!data.authorized) {
+          return { ok: false as const, error: "Confirm scope before a live check." };
+        }
+        await recordFinding(sql, context.userId, {
+          source: "scope",
+          target,
+          title: "Scope confirmed",
+          severity: "info",
+          content: `Operator confirmed authorization for ${target}.`,
+        });
       }
       try {
         evidence = await collectLive(data.tool, target);
@@ -461,6 +470,54 @@ export const runTool = createServerFn({ method: "POST" })
     };
   });
 
+export const runExposure = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: { target: string; authorized?: boolean }) => input)
+  .handler(async ({ context, data }) => {
+    if (!data.authorized) return { ok: false as const, error: "Confirm scope before a live check." };
+    const target = data.target.trim() || "localhost";
+    const sql = await getSql();
+    await ensureProfile(sql, context.userId);
+    await ensureFindings(sql);
+    let exposure;
+    try {
+      exposure = await collectExposure(target);
+    } catch (err) {
+      return { ok: false as const, error: err instanceof Error ? err.message : "Exposure check failed" };
+    }
+    const scope = await sql<{ id: string }>`
+      select id from findings where user_id = ${context.userId} and source = 'scope' limit 1
+    `;
+    if (scope.length === 0) {
+      await recordFinding(sql, context.userId, {
+        source: "scope",
+        target,
+        title: "Scope confirmed",
+        severity: "info",
+        content: `Operator confirmed authorization for ${target}.`,
+      });
+    }
+    await recordFinding(sql, context.userId, {
+      source: "portscan",
+      target,
+      title: `Exposure of ${exposure.host}`,
+      severity: exposure.open.some((p) => p.severity === "high") ? "high" : "info",
+      content: exposure.text,
+    });
+    for (const port of exposure.open) {
+      await recordFinding(sql, context.userId, {
+        source: "portscan",
+        target,
+        title: `Port ${port.port} open on ${exposure.host}`,
+        severity: port.severity,
+        content: `Port ${port.port} answered on ${exposure.host}.\n${port.note}`,
+      });
+    }
+    const engId = await currentEngagementId(sql, context.userId);
+    await saveHistory(sql, context.userId, engId, "exposure", target, exposure.text);
+    return { ok: true as const, content: exposure.text, open: exposure.open.length };
+  });
+
 export const askFather = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: { prompt: string }) => input)
@@ -479,12 +536,6 @@ export const askFather = createServerFn({ method: "POST" })
     }
     const credits = await commitPrompt(sql, context.userId, gate.used, CREDIT_COSTS.ask, gate.bill);
     await logPrayer(sql, context.userId, "response", "terminal", "done");
-    const targetLine = prompt.split("\n")[0]?.replace(/^Target:\s*/i, "") || "";
-    await recordFinding(sql, context.userId, {
-      source: "ask",
-      target: targetLine.slice(0, 200),
-      content: result.content,
-    });
     return {
       ok: true as const,
       content: result.content,

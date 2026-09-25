@@ -30,6 +30,7 @@ import {
   generateReport,
   getSnapshot,
   runAgent,
+  runExposure,
   runTool,
   sealCycle,
   selectEngagement,
@@ -193,12 +194,32 @@ function DeckPage() {
     setBusy(true);
     print("cmd", `${tool} → ${target}`);
     try {
-      const res = await runTool({ data: { tool, target } });
+      const res = await runTool({ data: { tool, target, authorized: true } });
       if (!res.ok) print("err", res.error);
       else {
         const bits = res.content.split("\n");
         print("father", bits.slice(0, 6).join("\n"));
         if (bits.length > 6) print("info", "Saved to the board.");
+        setResult(res.content);
+        setMobilePane("out");
+      }
+    } catch (e) {
+      print("err", e instanceof Error ? e.message : "failed");
+    } finally {
+      setBusy(false);
+      await refresh();
+    }
+  }
+
+  async function doExposure() {
+    if (!allowRun() || busy) return;
+    setBusy(true);
+    print("cmd", `exposure → ${target}`);
+    try {
+      const res = await runExposure({ data: { target, authorized: true } });
+      if (!res.ok) print("err", res.error);
+      else {
+        print("success", `${res.open} open ports. Saved on the board.`);
         setResult(res.content);
         setMobilePane("out");
       }
@@ -505,6 +526,14 @@ function DeckPage() {
                 );
               })}
             </ol>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void doExposure()}
+              className="h-12 rounded-md border border-primary bg-surface px-3 text-left font-sans text-sm font-semibold text-primary disabled:text-faint"
+            >
+              {busy ? "Checking…" : "Check exposure"}
+            </button>
             <div className="grid grid-cols-2 gap-2">
               {AGENT_META.map((a) => {
                 const Icon = a.icon;
@@ -706,12 +735,12 @@ function DeckPage() {
             className="min-h-[220px] flex-1"
           >
             <div className="min-h-0 flex-1 space-y-2 overflow-auto bg-bg p-2">
-              {(findings.data ?? []).length === 0 ? (
+              {(findings.data ?? []).filter((f) => f.source !== "scope").length === 0 ? (
                 <p className="px-1 text-[12px] text-faint">
                   Confirm scope, then run a task. Each result lands here as a finding with a next step.
                 </p>
               ) : (
-                (findings.data ?? []).map((f) => (
+                (findings.data ?? []).filter((f) => f.source !== "scope").map((f) => (
                   <article key={f.id} className="rounded-sm border border-border bg-surface p-2.5">
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-[13px] text-fg">{f.title}</p>

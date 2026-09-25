@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   createRootRoute,
   HeadContent,
@@ -65,6 +65,31 @@ function Providers({ children }: { children: ReactNode }) {
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 }
 
+function AndroidChrome() {
+  useEffect(() => {
+    let remove = () => {};
+    let cancelled = false;
+    void (async () => {
+      const { Capacitor } = await import("@capacitor/core");
+      if (cancelled || !Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "android") return;
+      const { StatusBar, Style } = await import("@capacitor/status-bar");
+      const { App } = await import("@capacitor/app");
+      await StatusBar.setBackgroundColor({ color: "#0b0c0e" }).catch(() => {});
+      await StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
+      const handle = await App.addListener("backButton", () => {
+        if (window.history.length > 1) window.history.back();
+        else void App.exitApp();
+      });
+      remove = () => void handle.remove();
+    })();
+    return () => {
+      cancelled = true;
+      remove();
+    };
+  }, []);
+  return null;
+}
+
 function RootDocument() {
   return (
     <html lang="en" className="antialiased" suppressHydrationWarning>
@@ -72,6 +97,7 @@ function RootDocument() {
         <HeadContent />
       </head>
       <body className="bg-bg text-fg">
+        <AndroidChrome />
         <PreviewHostBridge />
         <AuthProvider>
           <Providers>

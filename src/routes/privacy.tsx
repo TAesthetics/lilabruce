@@ -29,7 +29,7 @@ function Privacy() {
         </p>
         <h2 className="font-sans text-base font-semibold text-fg">AI processing</h2>
         <p>
-          Agent, tool, report, and chat prompts are sent to xAI with the built-in key.
+          Agent, tool, report, and chat prompts are sent to the built-in model. The key stays on the server.
           Do not paste secrets you are not allowed to share with that processor.
         </p>
         <h2 className="font-sans text-base font-semibold text-fg">Your rights</h2>

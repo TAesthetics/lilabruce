@@ -71,12 +71,13 @@ export async function ensureFindings(sql: Sql) {
 export async function recordFinding(
   sql: Sql,
   userId: string,
-  input: { source: string; target: string; content: string },
+  input: { source: string; target: string; content: string; title?: string; severity?: string },
 ) {
   await ensureFindings(sql);
   const id = crypto.randomUUID();
   const source = input.source.slice(0, 40);
   const detail = input.content.slice(0, 4000);
+  const severity = input.severity || guessSeverity(detail);
   await sql`
     insert into findings (id, user_id, target, source, title, severity, status, tactic, detail, next_step)
     values (
@@ -84,8 +85,8 @@ export async function recordFinding(
       ${userId},
       ${input.target.slice(0, 200)},
       ${source},
-      ${titleFrom(source, input.target, detail)},
-      ${guessSeverity(detail)},
+      ${(input.title || titleFrom(source, input.target, detail)).slice(0, 120)},
+      ${severity},
       'open',
       ${TACTIC[source] ?? source},
       ${detail},

@@ -39,5 +39,5 @@ export function payMethodBlurb(platform: StorePlatform): string {
   if (platform === "android") {
     return "In-app purchases are billed through Google Play. Manage subscriptions in Play Store.";
   }
-  return "Alpha includes 20 prompts a day and the Kali tools. The model runs on the included Grok subscription. After that, the month is €15.";
+  return "Alpha includes 20 prompts a day and the lab checks. After that, the month is €15.";
 }

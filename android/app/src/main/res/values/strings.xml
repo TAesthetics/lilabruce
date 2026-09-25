@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">TEMPLE WIRED</string>
+    <string name="title_activity_main">TEMPLE WIRED</string>
+    <string name="package_name">app.templewired.console</string>
+    <string name="custom_url_scheme">app.templewired.console</string>
+</resources>

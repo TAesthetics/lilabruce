@@ -76,7 +76,7 @@ function AccountPage() {
             Model
           </h2>
           <p className="mt-2 text-[13px] text-muted">
-            xAI is built into the server. The key is not shown and cannot be changed here.
+            The model is built into the server. The key is not shown and cannot be changed here.
           </p>
           <p className="mt-2 text-[12px] text-faint">
             {profile?.pro
