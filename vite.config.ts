@@ -189,6 +189,9 @@ export default defineConfig(({ command, isPreview }) => ({
           nitro({
             // Railway sets NITRO_PRESET=node-server. Vercel keeps the default.
             preset: process.env.NITRO_PRESET || "vercel",
+            // Do not treat a root server.js as the app. That file was the old
+            // Express server and has no default export, which fails the image build.
+            serverEntry: false,
             // Auto-registers server/middleware/* (the PWA install page +
             // manifest + head-tag middleware). Nitro v3 defaults serverDir to
             // false, so removing this silently unwires /?install=1 on deploys.
