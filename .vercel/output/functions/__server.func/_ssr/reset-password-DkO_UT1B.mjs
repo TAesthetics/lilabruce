@@ -6,8 +6,8 @@ import { t as authClient } from "./client-DUtYoQbQ.mjs";
 import { t as Wordmark } from "./brand-Q_2EG5dj.mjs";
 import { t as Button } from "./button-BUJZhIkX.mjs";
 import { t as Input } from "./input-Djc-Iak1.mjs";
-import { n as Route$4 } from "./router-Odpe4zs2.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/reset-password-BdoBOm-R.js
+import { n as Route$4 } from "./router-DiohSlMo.mjs";
+//#region node_modules/.nitro/vite/services/ssr/assets/reset-password-DkO_UT1B.js
 var import_react = /* @__PURE__ */ __toESM(require_react());
 var import_jsx_runtime = require_jsx_runtime();
 function ResetPage() {

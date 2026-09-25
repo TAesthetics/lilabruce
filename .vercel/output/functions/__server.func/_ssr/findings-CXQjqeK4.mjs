@@ -1,7 +1,7 @@
 import { r as createServerFn } from "./ssr.mjs";
 import { t as createSsrRpc } from "./createSsrRpc-B2Izd0c7.mjs";
-import { t as authMiddleware } from "./middleware-Bwsq9YNt.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/findings-DDK5oQeC.js
+import { t as authMiddleware } from "./middleware-CpNJlhqp.mjs";
+//#region node_modules/.nitro/vite/services/ssr/assets/findings-CXQjqeK4.js
 var TACTIC = {
 	recon: "Reconnaissance",
 	exploit: "Initial Access",

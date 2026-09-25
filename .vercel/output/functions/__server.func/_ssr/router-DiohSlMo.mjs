@@ -11,8 +11,8 @@ import { t as QueryClient } from "../_libs/tanstack__query-core.mjs";
 import { i as getSql } from "./db-D6L-vCpY.mjs";
 import { o as ensureProfile } from "./db-BAhP72_9.mjs";
 import { t as fulfillPurchase } from "./grants-CBAuo8s-.mjs";
-import { t as auth } from "./server-D5BtKRKR.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/router-Odpe4zs2.js
+import { t as auth } from "./server-Ejb1kaUK.mjs";
+//#region node_modules/.nitro/vite/services/ssr/assets/router-DiohSlMo.js
 var import_react = /* @__PURE__ */ __toESM(require_react());
 var import_jsx_runtime = require_jsx_runtime();
 function AppErrorComponent({ error }) {
@@ -389,19 +389,19 @@ function RootDocument() {
 }
 var $$splitComponentImporter$9 = () => import("./routes-CzLEhmsG.mjs");
 var Route$11 = createFileRoute("/")({ component: lazyRouteComponent($$splitComponentImporter$9, "component") });
-var $$splitComponentImporter$8 = () => import("./account-ifxao9sB.mjs");
+var $$splitComponentImporter$8 = () => import("./account-CBS0kD7q.mjs");
 var Route$10 = createFileRoute("/account")({ component: lazyRouteComponent($$splitComponentImporter$8, "component") });
-var $$splitComponentImporter$7 = () => import("./deck-CSyS2KjP.mjs");
+var $$splitComponentImporter$7 = () => import("./deck-B2BoU3v9.mjs");
 var Route$9 = createFileRoute("/deck")({ component: lazyRouteComponent($$splitComponentImporter$7, "component") });
-var $$splitComponentImporter$6 = () => import("./login-DR4ESRAC.mjs");
+var $$splitComponentImporter$6 = () => import("./login-BJYW-3qP.mjs");
 var Route$8 = createFileRoute("/login")({ component: lazyRouteComponent($$splitComponentImporter$6, "component") });
-var $$splitComponentImporter$5 = () => import("./map-D_gKExED.mjs");
+var $$splitComponentImporter$5 = () => import("./map-tUy1u-A6.mjs");
 var Route$7 = createFileRoute("/map")({ component: lazyRouteComponent($$splitComponentImporter$5, "component") });
 var $$splitComponentImporter$4 = () => import("./privacy-BGkUFEXA.mjs");
 var Route$6 = createFileRoute("/privacy")({ component: lazyRouteComponent($$splitComponentImporter$4, "component") });
 var $$splitComponentImporter$3 = () => import("./reel-1gEoaVkP.mjs");
 var Route$5 = createFileRoute("/reel")({ component: lazyRouteComponent($$splitComponentImporter$3, "component") });
-var $$splitComponentImporter$2 = () => import("./reset-password-BdoBOm-R.mjs");
+var $$splitComponentImporter$2 = () => import("./reset-password-DkO_UT1B.mjs");
 var Route$4 = createFileRoute("/reset-password")({
 	validateSearch: (search) => ({
 		token: typeof search.token === "string" ? search.token : void 0,
@@ -409,7 +409,7 @@ var Route$4 = createFileRoute("/reset-password")({
 	}),
 	component: lazyRouteComponent($$splitComponentImporter$2, "component")
 });
-var $$splitComponentImporter$1 = () => import("./shop-BkkC4jn8.mjs");
+var $$splitComponentImporter$1 = () => import("./shop-fhzMYolS.mjs");
 var Route$3 = createFileRoute("/shop")({
 	validateSearch: (search) => ({
 		status: search.status === "success" || search.status === "cancel" ? search.status : void 0,

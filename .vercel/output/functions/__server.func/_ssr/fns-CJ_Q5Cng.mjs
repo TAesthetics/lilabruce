@@ -6,8 +6,8 @@ import { r as createServerFn } from "./ssr.mjs";
 import { n as cn } from "./brand-Q_2EG5dj.mjs";
 import { t as X } from "../_libs/lucide-react.mjs";
 import { t as createSsrRpc } from "./createSsrRpc-B2Izd0c7.mjs";
-import { t as authMiddleware } from "./middleware-Bwsq9YNt.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/fns-CUwx76VH.js
+import { t as authMiddleware } from "./middleware-CpNJlhqp.mjs";
+//#region node_modules/.nitro/vite/services/ssr/assets/fns-CJ_Q5Cng.js
 var import_react = /* @__PURE__ */ __toESM(require_react());
 var import_jsx_runtime = require_jsx_runtime();
 function Clock() {

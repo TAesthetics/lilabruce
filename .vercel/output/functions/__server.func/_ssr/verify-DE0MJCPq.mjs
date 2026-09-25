@@ -1,10 +1,10 @@
 import { r as createServerFn } from "./ssr.mjs";
 import { t as createServerRpc } from "./createServerRpc-CcvdN_gc.mjs";
-import { t as authMiddleware } from "./middleware-Bwsq9YNt.mjs";
+import { t as authMiddleware } from "./middleware-CpNJlhqp.mjs";
 import { i as getSql } from "./db-D6L-vCpY.mjs";
 import { c as logPrayer, o as ensureProfile, s as getProduct } from "./db-BAhP72_9.mjs";
 import { t as fulfillPurchase } from "./grants-CBAuo8s-.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/verify-CYebUySB.js
+//#region node_modules/.nitro/vite/services/ssr/assets/verify-DE0MJCPq.js
 async function verifyAppleReceipt(receipt, nativeId) {
 	const secret = process.env.APPLE_SHARED_SECRET;
 	if (!secret) return false;

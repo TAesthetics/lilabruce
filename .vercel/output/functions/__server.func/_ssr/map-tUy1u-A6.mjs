@@ -2,9 +2,9 @@ import { n as require_jsx_runtime } from "../_libs/radix-ui__react-context+react
 import { r as createServerFn } from "./ssr.mjs";
 import { n as TempleShell, t as AuthGate } from "./shell-DBfeorn-.mjs";
 import { t as createSsrRpc } from "./createSsrRpc-B2Izd0c7.mjs";
-import { t as authMiddleware } from "./middleware-Bwsq9YNt.mjs";
+import { t as authMiddleware } from "./middleware-CpNJlhqp.mjs";
 import { t as useQuery } from "../_libs/tanstack__react-query.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/map-D_gKExED.js
+//#region node_modules/.nitro/vite/services/ssr/assets/map-tUy1u-A6.js
 var import_jsx_runtime = require_jsx_runtime();
 /** Map for the signed-in operator, built from saved findings. */
 var getUserMap = createServerFn({ method: "GET" }).middleware([authMiddleware]).handler(createSsrRpc("a4976606cf29bdc42219c4905214060cb3704c5d2f121378703c483264486fee"));

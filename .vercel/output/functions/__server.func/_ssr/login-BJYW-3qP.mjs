@@ -6,8 +6,8 @@ import { t as authClient } from "./client-DUtYoQbQ.mjs";
 import { t as Wordmark } from "./brand-Q_2EG5dj.mjs";
 import { t as Button } from "./button-BUJZhIkX.mjs";
 import { t as Input } from "./input-Djc-Iak1.mjs";
-import { i as latestResetLink } from "./server-D5BtKRKR.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/login-DR4ESRAC.js
+import { i as latestResetLink } from "./server-Ejb1kaUK.mjs";
+//#region node_modules/.nitro/vite/services/ssr/assets/login-BJYW-3qP.js
 var import_react = /* @__PURE__ */ __toESM(require_react());
 var import_jsx_runtime = require_jsx_runtime();
 function LoginPage() {

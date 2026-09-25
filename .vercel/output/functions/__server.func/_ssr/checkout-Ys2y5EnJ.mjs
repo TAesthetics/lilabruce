@@ -1,10 +1,10 @@
 import { r as createServerFn } from "./ssr.mjs";
 import { t as createServerRpc } from "./createServerRpc-CcvdN_gc.mjs";
-import { t as authMiddleware } from "./middleware-Bwsq9YNt.mjs";
+import { t as authMiddleware } from "./middleware-CpNJlhqp.mjs";
 import { i as getSql, t as dbSource } from "./db-D6L-vCpY.mjs";
 import { a as billedByStripe, c as logPrayer, o as ensureProfile, s as getProduct, t as CATALOG } from "./db-BAhP72_9.mjs";
 import { t as fulfillPurchase } from "./grants-CBAuo8s-.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/checkout-BvUUpjaw.js
+//#region node_modules/.nitro/vite/services/ssr/assets/checkout-Ys2y5EnJ.js
 function stripeConfigured() {
 	return Boolean(process.env.STRIPE_SECRET_KEY);
 }

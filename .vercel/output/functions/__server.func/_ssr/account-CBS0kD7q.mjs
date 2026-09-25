@@ -4,10 +4,10 @@ import { v as Link } from "../_libs/@tanstack/react-router+[...].mjs";
 import { n as require_jsx_runtime } from "../_libs/radix-ui__react-context+react.mjs";
 import { r as signOut } from "./client-DUtYoQbQ.mjs";
 import { i as useCurrentUser, n as TempleShell, r as UserButton, t as AuthGate } from "./shell-DBfeorn-.mjs";
-import { l as getSnapshot, n as Dialog, r as DialogContent, s as deleteAccountData, t as Clock } from "./fns-CUwx76VH.mjs";
+import { l as getSnapshot, n as Dialog, r as DialogContent, s as deleteAccountData, t as Clock } from "./fns-CJ_Q5Cng.mjs";
 import { t as Button } from "./button-BUJZhIkX.mjs";
 import { t as useQuery } from "../_libs/tanstack__react-query.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/account-ifxao9sB.js
+//#region node_modules/.nitro/vite/services/ssr/assets/account-CBS0kD7q.js
 var import_react = /* @__PURE__ */ __toESM(require_react());
 var import_jsx_runtime = require_jsx_runtime();
 function AccountPage() {

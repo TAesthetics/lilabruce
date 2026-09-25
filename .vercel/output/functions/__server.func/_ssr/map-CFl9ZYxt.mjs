@@ -1,9 +1,9 @@
 import { r as createServerFn } from "./ssr.mjs";
 import { t as createServerRpc } from "./createServerRpc-CcvdN_gc.mjs";
-import { t as authMiddleware } from "./middleware-Bwsq9YNt.mjs";
+import { t as authMiddleware } from "./middleware-CpNJlhqp.mjs";
 import { i as getSql } from "./db-D6L-vCpY.mjs";
-import { n as ensureFindings } from "./findings-DDK5oQeC.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/map-D_rgN1zp.js
+import { n as ensureFindings } from "./findings-CXQjqeK4.mjs";
+//#region node_modules/.nitro/vite/services/ssr/assets/map-CFl9ZYxt.js
 /**
 * Generate hardening recommendations based on map analysis
 */

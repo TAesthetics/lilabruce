@@ -13,7 +13,7 @@ import { a as utf8ToBytes, i as managedNonce, n as bytesToHex, r as hexToBytes, 
 import { n as string$1, t as boolean$1 } from "../_libs/zod.mjs";
 import { t as Pool } from "../_libs/pg.mjs";
 import { randomBytes } from "node:crypto";
-//#region node_modules/.nitro/vite/services/ssr/assets/server-D5BtKRKR.js
+//#region node_modules/.nitro/vite/services/ssr/assets/server-Ejb1kaUK.js
 function tryDecode$1(str) {
 	if (str.indexOf("%") === -1) return str;
 	try {
@@ -8881,7 +8881,10 @@ var baseURL = explicitBaseURL ?? {
 		...previewAllowedHosts,
 		"localhost",
 		"127.0.0.1",
-		"[::1]"
+		"[::1]",
+		/\.railway\.app$/,
+		/\.vercel\.app$/,
+		/\.netlify\.app$/
 	],
 	protocol: "auto",
 	fallback: "http://localhost:8080"
