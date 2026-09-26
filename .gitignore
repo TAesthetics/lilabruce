@@ -43,6 +43,9 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+.vercel/output/
+.grok/preview.log
+.grok/preview.pid
 
 # ============================================================================
 # Layer 1 Runtime
