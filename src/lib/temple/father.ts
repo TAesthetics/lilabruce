@@ -1,11 +1,36 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { SYSTEM_CORE } from "./prompts";
 
 export type FatherResult =
   | { ok: true; content: string; provider: "venice" }
   | { ok: false; error: string };
 
+function veniceEnv(): { key: string; model: string } {
+  let key = process.env.VENICE_API_KEY?.trim() || "";
+  let model = process.env.VENICE_MODEL?.trim() || "";
+  if (!key) {
+    try {
+      const text = readFileSync(join(process.cwd(), ".env"), "utf8");
+      for (const line of text.split("\n")) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith("#")) continue;
+        const eq = trimmed.indexOf("=");
+        if (eq < 0) continue;
+        const name = trimmed.slice(0, eq).trim();
+        const value = trimmed.slice(eq + 1).trim();
+        if (name === "VENICE_API_KEY" && value) key = value;
+        if (name === "VENICE_MODEL" && value) model = value;
+      }
+    } catch {
+      /* no local env file */
+    }
+  }
+  return { key, model: model || "llama-3.3-70b" };
+}
+
 export function modelConfigured(): boolean {
-  return Boolean(process.env.VENICE_API_KEY);
+  return Boolean(veniceEnv().key);
 }
 
 async function chatComplete(
@@ -44,8 +69,7 @@ async function chatComplete(
 }
 
 export async function callFather(prompt: string, system: string): Promise<FatherResult> {
-  const key = process.env.VENICE_API_KEY;
-  const model = process.env.VENICE_MODEL || "llama-3.3-70b";
+  const { key, model } = veniceEnv();
   if (!key) return { ok: false, error: "The model is not available." };
   return chatComplete(key, model, system, prompt);
 }

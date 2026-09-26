@@ -81,6 +81,29 @@ export async function getSessionUser(
  *   read/write everyone's rows.
  * - Auth disabled + no database -> the shared dev user id.
  */
+async function guestId(): Promise<string> {
+  const request = getRequest();
+  const raw = request?.headers.get("cookie") ?? "";
+  const match = raw.match(/(?:^|;\s*)temple_guest=([^;]+)/);
+  if (match?.[1]) {
+    const existing = decodeURIComponent(match[1]);
+    if (/^g_[a-zA-Z0-9]{16,}$/.test(existing)) return existing;
+  }
+  const id = `g_${crypto.randomUUID().replace(/-/g, "")}`;
+  try {
+    const { setCookie } = await import("@tanstack/react-start/server");
+    setCookie("temple_guest", id, {
+      path: "/",
+      httpOnly: true,
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 400,
+    });
+  } catch {
+    /* the same request still uses this id */
+  }
+  return id;
+}
+
 export async function requireUserId(bearerToken?: string): Promise<string> {
   if (!authConfigured && !gateIdentityEnabled()) {
     if (databaseConfigured) {
@@ -91,7 +114,15 @@ export async function requireUserId(bearerToken?: string): Promise<string> {
     }
     return DEV_USER_ID;
   }
-  const user = await getSessionUser(bearerToken);
-  if (!user) throw new UnauthorizedError();
-  return user.id;
+  const request = getRequest();
+  const cookie = request?.headers.get("cookie") ?? "";
+  const hasSessionCookie = /session_token=/.test(cookie);
+  if (!bearerToken && !hasSessionCookie) return guestId();
+
+  const user = await Promise.race([
+    getSessionUser(bearerToken),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500)),
+  ]);
+  if (user) return user.id;
+  return guestId();
 }

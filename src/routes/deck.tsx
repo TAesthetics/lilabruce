@@ -57,6 +57,26 @@ const AGENT_META: { id: AgentName; name: string; icon: typeof Search }[] = [
 
 type TermLine = { cls: "cmd" | "err" | "info" | "father" | "success"; text: string };
 
+const CHAT_KEY = "temple-chat-lines";
+
+function loadLines(): TermLine[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const parsed = JSON.parse(sessionStorage.getItem(CHAT_KEY) || "[]") as TermLine[];
+    return Array.isArray(parsed) ? parsed.slice(-200) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLines(lines: TermLine[]) {
+  try {
+    sessionStorage.setItem(CHAT_KEY, JSON.stringify(lines.slice(-200)));
+  } catch {
+    /* private mode */
+  }
+}
+
 function DeckPage() {
   const snap = useQuery({
     queryKey: ["temple"],
@@ -71,7 +91,7 @@ function DeckPage() {
   const [target, setTargetLocal] = useState("localhost");
   const [tab, setTab] = useState<string>("recon");
   const [result, setResult] = useState("");
-  const [lines, setLines] = useState<TermLine[]>([]);
+  const [lines, setLines] = useState<TermLine[]>(loadLines);
   const [cmd, setCmd] = useState("");
   const [history, setHistory] = useState<string[]>([]);
   const [histIdx, setHistIdx] = useState(-1);
@@ -80,7 +100,7 @@ function DeckPage() {
   const [engOpen, setEngOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [fbOpen, setFbOpen] = useState(false);
-  const [mobilePane, setMobilePane] = useState<"chat" | "ops" | "out">("ops");
+  const [mobilePane, setMobilePane] = useState<"chat" | "ops" | "out">("chat");
   const [authorized, setAuthorized] = useState(false);
   const loopRef = useRef(false);
   const targetRef = useRef(target);
@@ -109,11 +129,17 @@ function DeckPage() {
   useEffect(() => {
     if (booted.current) return;
     booted.current = true;
-    print("info", "Purple-team chat. Ask about the target, or type /help.");
+    if (lines.length === 0) {
+      print("info", "Purple-team chat. Ask about the target, or type /help.");
+    }
   }, []);
 
   function print(cls: TermLine["cls"], text: string) {
-    setLines((prev) => [...prev.slice(-340), { cls, text }]);
+    setLines((prev) => {
+      const next = [...prev.slice(-340), { cls, text }];
+      saveLines(next);
+      return next;
+    });
   }
 
   async function refresh() {
@@ -398,7 +424,7 @@ function DeckPage() {
               ? "included"
               : `${data?.profile.promptsLeft ?? DAILY_FREE_PROMPTS} of ${DAILY_FREE_PROMPTS} left`
           }
-          className={cn("min-h-[70dvh] md:min-h-0", mobilePane !== "chat" && "hidden md:flex")}
+          className={cn("h-[calc(100dvh-8.5rem)] md:h-auto md:min-h-0", mobilePane !== "chat" && "hidden md:flex")}
         >
           <div ref={termRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto bg-bg px-3 py-3">
             {lines.map((l, i) => (

@@ -167,6 +167,11 @@ export default defineConfig(({ command, isPreview }) => ({
     host: "0.0.0.0",
     port: 8080,
     strictPort: true,
+    watch: {
+      // PGLite writes here on every chat message. Watching it reloads the page
+      // and wipes the conversation before the reply can render.
+      ignored: ["**/.data/**", "**/android/**", "**/releases/**"],
+    },
   },
   preview: {
     host: "127.0.0.1",

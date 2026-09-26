@@ -31,7 +31,7 @@ export function TempleShell({
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   return (
-    <div className="relative z-10 flex min-h-dvh flex-col bg-bg">
+    <div className="relative z-10 flex h-dvh max-h-dvh flex-col overflow-hidden bg-bg">
       <header className="sticky top-0 z-30 flex h-12 items-center justify-between gap-3 border-b border-border bg-surface px-3 pt-[env(safe-area-inset-top)] sm:px-4">
         <div className="flex min-w-0 items-center gap-3">
           <Wordmark to="/deck" />
@@ -54,7 +54,7 @@ export function TempleShell({
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1 flex-col pb-[calc(4.25rem+env(safe-area-inset-bottom))] md:pb-0">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain pb-[calc(4.25rem+env(safe-area-inset-bottom))] md:pb-0">
         {children}
       </div>
 
