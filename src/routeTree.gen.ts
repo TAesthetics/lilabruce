@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as DeckRouteImport } from './routes/deck'
+import { Route as HqRouteImport } from './routes/hq'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MapRouteImport } from './routes/map'
 import { Route as PrivacyRouteImport } from './routes/privacy'
@@ -35,6 +36,11 @@ const AccountRoute = AccountRouteImport.update({
 const DeckRoute = DeckRouteImport.update({
   id: '/deck',
   path: '/deck',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HqRoute = HqRouteImport.update({
+  id: '/hq',
+  path: '/hq',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -87,6 +93,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
   '/deck': typeof DeckRoute
+  '/hq': typeof HqRoute
   '/login': typeof LoginRoute
   '/map': typeof MapRoute
   '/privacy': typeof PrivacyRoute
@@ -101,6 +108,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
   '/deck': typeof DeckRoute
+  '/hq': typeof HqRoute
   '/login': typeof LoginRoute
   '/map': typeof MapRoute
   '/privacy': typeof PrivacyRoute
@@ -116,6 +124,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
   '/deck': typeof DeckRoute
+  '/hq': typeof HqRoute
   '/login': typeof LoginRoute
   '/map': typeof MapRoute
   '/privacy': typeof PrivacyRoute
@@ -132,6 +141,7 @@ export interface FileRouteTypes {
     | '/'
     | '/account'
     | '/deck'
+    | '/hq'
     | '/login'
     | '/map'
     | '/privacy'
@@ -146,6 +156,7 @@ export interface FileRouteTypes {
     | '/'
     | '/account'
     | '/deck'
+    | '/hq'
     | '/login'
     | '/map'
     | '/privacy'
@@ -160,6 +171,7 @@ export interface FileRouteTypes {
     | '/'
     | '/account'
     | '/deck'
+    | '/hq'
     | '/login'
     | '/map'
     | '/privacy'
@@ -175,6 +187,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountRoute: typeof AccountRoute
   DeckRoute: typeof DeckRoute
+  HqRoute: typeof HqRoute
   LoginRoute: typeof LoginRoute
   MapRoute: typeof MapRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -207,6 +220,13 @@ declare module '@tanstack/react-router' {
       path: '/deck'
       fullPath: '/deck'
       preLoaderRoute: typeof DeckRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hq': {
+      id: '/hq'
+      path: '/hq'
+      fullPath: '/hq'
+      preLoaderRoute: typeof HqRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -279,6 +299,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountRoute: AccountRoute,
   DeckRoute: DeckRoute,
+  HqRoute: HqRoute,
   LoginRoute: LoginRoute,
   MapRoute: MapRoute,
   PrivacyRoute: PrivacyRoute,
